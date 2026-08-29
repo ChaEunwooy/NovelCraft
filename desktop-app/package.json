@@ -37,7 +37,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "码字神器"
+      "shortcutName": "码字神器",
+      "include": "build/installer.nsh"
     },
     "files": [
       "dist/**/*",
