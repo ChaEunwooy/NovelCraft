@@ -10,7 +10,7 @@ let serverInstance = null;
 // 禁用硬件加速故障降级
 app.commandLine.appendSwitch('disable-gpu-sandbox');
 
-// 后台静默抓取番茄官方实时二维码 (100% 隐藏无头运行，绝不弹窗)
+// 🎯 后台静默抓取番茄官方真实二维码 Base64 源码 (100% 官方原始数据，严禁任何UI截图)
 async function fetchHeadlessTomatoQr() {
   if (bgWorkerWindow && !bgWorkerWindow.isDestroyed()) {
     try { bgWorkerWindow.destroy(); } catch (e) {}
@@ -19,7 +19,7 @@ async function fetchHeadlessTomatoQr() {
 
   return new Promise((resolve) => {
     bgWorkerWindow = new BrowserWindow({
-      show: false, // 彻底隐藏在后台
+      show: false, // 彻底无头隐藏在后台
       width: 1280,
       height: 800,
       webPreferences: {
@@ -34,11 +34,11 @@ async function fetchHeadlessTomatoQr() {
 
     bgWorkerWindow.webContents.on('did-finish-load', async () => {
       try {
-        // 在后台静默点击“扫码登录”
+        // 在后台页面中精准点击“扫码登录” Tab
         await bgWorkerWindow.webContents.executeJavaScript(`
           (() => {
-            const els = Array.from(document.querySelectorAll('*'));
-            for (const el of els) {
+            const all = Array.from(document.querySelectorAll('*'));
+            for (const el of all) {
               if (el.children.length === 0 && (el.innerText || '').trim() === '扫码登录') {
                 el.click();
                 return true;
@@ -48,38 +48,43 @@ async function fetchHeadlessTomatoQr() {
           })();
         `);
 
-        // 等待二维码 DOM 呈现并截取二维码 Data URL
+        // 等待官方二维码完成渲染，直接提取 <img> 标签的真实 Base64 源码 (data:image/png;base64,...)
         setTimeout(async () => {
           if (hasResolved || !bgWorkerWindow || bgWorkerWindow.isDestroyed()) return;
           try {
-            const qrRect = await bgWorkerWindow.webContents.executeJavaScript(`
+            const qrSrc = await bgWorkerWindow.webContents.executeJavaScript(`
               (() => {
-                // 1. 查找 img 标签
                 const imgs = Array.from(document.querySelectorAll('img'));
                 for (const img of imgs) {
-                  if (img.src && (img.src.includes('data:image') || img.src.includes('qrcode') || (img.alt && img.alt.includes('二维码')))) {
-                    const rect = img.getBoundingClientRect();
-                    return { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) };
+                  if (img.src && (img.src.startsWith('data:image') || img.src.includes('qrcode') || (img.alt && img.alt.includes('二维码')))) {
+                    return img.src;
                   }
                 }
-                // 2. 查找包含 qrcode 的容器
-                const box = document.querySelector('[class*="qrcode"], [class*="qr-code"], [class*="qrCode"], [class*="scan"]');
-                if (box) {
-                  const rect = box.getBoundingClientRect();
-                  return { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) };
-                }
-                return { x: 780, y: 220, width: 320, height: 350 };
+                return null;
               })();
             `);
 
-            const img = await bgWorkerWindow.webContents.capturePage(qrRect);
-            const dataUrl = img.toDataURL();
-            hasResolved = true;
-            resolve({ status: 'ok', qrImage: dataUrl });
+            if (qrSrc) {
+              hasResolved = true;
+              console.log('[Electron] 🎯 成功从 DOM 提取官方二维码真实 Base64 源码！长度:', qrSrc.length);
+              resolve({ status: 'ok', qrImage: qrSrc });
+            } else {
+              // 备用：从字节跳动官方 SSO 接口直接获取原始 Base64
+              const directRes = await fetch('https://sso.toutiao.com/get_qrcode/?service_id=2503&aid=2503');
+              const dJson = await directRes.json();
+              if (dJson?.data?.qrcode) {
+                const fullSrc = 'data:image/png;base64,' + dJson.data.qrcode;
+                hasResolved = true;
+                console.log('[Electron] 🎯 成功从 SSO 抓取官方二维码真实 Base64 源码！长度:', fullSrc.length);
+                resolve({ status: 'ok', qrImage: fullSrc });
+              } else {
+                resolve({ status: 'error', message: '未能提取官方二维码源码' });
+              }
+            }
           } catch (e) {
             if (!hasResolved) resolve({ status: 'error', message: e.message });
           }
-        }, 1500);
+        }, 1200);
       } catch (e) {
         if (!hasResolved) resolve({ status: 'error', message: e.message });
       }
@@ -98,7 +103,7 @@ async function fetchHeadlessTomatoQr() {
 
         if (sessionCookie && sessionCookie.value) {
           clearInterval(checkInterval);
-          console.log('[Electron] 🎉 后台无头捕获到番茄官方扫码登录成功！');
+          console.log('[Electron] 🎉 捕获到番茄官方扫码登录成功！');
           const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join('; ');
 
           const exeDir = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
