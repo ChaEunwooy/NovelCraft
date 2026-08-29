@@ -9,8 +9,11 @@
         <span class="status-dot"></span>
         <span>{{ saveStatus }}</span>
       </div>
+      <button class="open-storage-btn" @click="$emit('open-storage-settings')" title="点击查看并自定义文稿与数据保存位置">
+        ⚙️ 存储设置
+      </button>
       <button class="open-storage-btn" @click="openLocalFolder" title="在 Windows 资源管理器中打开当前本地物理数据存档目录">
-        📂 存档目录
+        📂 打开存档
       </button>
     </div>
 
@@ -90,6 +93,7 @@ defineEmits<{
   (e: 'toggle-mindmap'): void;
   (e: 'change-theme', theme: 'white' | 'sepia' | 'dark'): void;
   (e: 'open-tomato-modal'): void;
+  (e: 'open-storage-settings'): void;
 }>();
 
 function openLocalFolder() {

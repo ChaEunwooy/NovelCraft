@@ -13,23 +13,69 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
     app.use(express.json({ limit: '50mb' }));
     app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-    // 确定数据存储目录 (优先当前exe同级目录，其次用户文档目录)
-    let ROOT_STORAGE = '';
-    const exeDir = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
-    const localDir = path.join(exeDir, 'data-storage');
+    // -------------------------------------------------------------
+    // ⚙️ 自定义存储路径与持久化配置文件
+    // -------------------------------------------------------------
+    const CONFIG_FILE = path.join(os.homedir(), 'Documents', '码字神器数据', 'config.json');
 
-    try {
-      if (!fs.existsSync(localDir)) fs.mkdirSync(localDir, { recursive: true });
-      fs.writeFileSync(path.join(localDir, '.write_test'), 'ok');
-      fs.unlinkSync(path.join(localDir, '.write_test'));
-      ROOT_STORAGE = localDir;
-    } catch (e) {
-      ROOT_STORAGE = path.join(os.homedir(), 'Documents', '码字神器数据', 'data-storage');
+    function loadConfig() {
+      try {
+        if (fs.existsSync(CONFIG_FILE)) {
+          return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+        }
+      } catch (e) {}
+      return {};
     }
 
-    const NOVELS_DIR = path.join(ROOT_STORAGE, 'novels');
-    const BACKUPS_DIR = path.join(ROOT_STORAGE, 'backups');
-    const AUTH_DIR = path.join(ROOT_STORAGE, 'auth');
+    function saveConfig(cfg) {
+      try {
+        const p = path.dirname(CONFIG_FILE);
+        if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf8');
+      } catch (e) {}
+    }
+
+    function getDefaultStorage() {
+      const exeDir = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
+      const localDir = path.join(exeDir, 'data-storage');
+      try {
+        if (!exeDir.includes('Program Files') && !exeDir.includes('Windows')) {
+          if (!fs.existsSync(localDir)) fs.mkdirSync(localDir, { recursive: true });
+          fs.writeFileSync(path.join(localDir, '.write_test'), 'ok');
+          fs.unlinkSync(path.join(localDir, '.write_test'));
+          return localDir;
+        }
+      } catch (e) {}
+      return path.join(os.homedir(), 'Documents', '码字神器数据', 'data-storage');
+    }
+
+    const cfg = loadConfig();
+    let ROOT_STORAGE = (cfg.storagePath && typeof cfg.storagePath === 'string' && cfg.storagePath.trim())
+      ? cfg.storagePath.trim()
+      : getDefaultStorage();
+
+    let NOVELS_DIR = path.join(ROOT_STORAGE, 'novels');
+    let BACKUPS_DIR = path.join(ROOT_STORAGE, 'backups');
+    let AUTH_DIR = path.join(ROOT_STORAGE, 'auth');
+
+    function copyFolderRecursiveSync(source, target) {
+      if (!fs.existsSync(source)) return;
+      if (!fs.existsSync(target)) fs.mkdirSync(target, { recursive: true });
+      const files = fs.readdirSync(source);
+      for (const file of files) {
+        const curSource = path.join(source, file);
+        const curTarget = path.join(target, file);
+        if (fs.lstatSync(curSource).isDirectory()) {
+          copyFolderRecursiveSync(curSource, curTarget);
+        } else {
+          try {
+            if (!fs.existsSync(curTarget)) {
+              fs.copyFileSync(curSource, curTarget);
+            }
+          } catch (e) {}
+        }
+      }
+    }
 
     function ensureDir(dir) {
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

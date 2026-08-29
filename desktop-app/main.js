@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, ipcMain, session } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, session, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { startServer } = require('./server/index.js');
@@ -205,4 +205,16 @@ app.on('window-all-closed', () => {
     }
     app.quit();
   }
+});
+
+ipcMain.handle('select-directory', async () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: '选择小说文稿与数据存放文件夹',
+    properties: ['openDirectory', 'createDirectory']
+  });
+  if (!result.canceled && result.filePaths && result.filePaths.length > 0) {
+    return result.filePaths[0];
+  }
+  return null;
 });

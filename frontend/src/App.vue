@@ -73,6 +73,13 @@
       />
     </main>
 
+    <!-- ⚙️ 存储路径与保存位置设置弹窗 -->
+    <StorageSettingsModal
+      :is-open="isStorageSettingsOpen"
+      @close="isStorageSettingsOpen = false"
+      @path-changed="fetchNovels"
+    />
+
     <!-- 番茄作家专区多账号管理中心弹窗 -->
     <TomatoAuthModal
       :is-open="isTomatoModalOpen"
@@ -179,6 +186,7 @@ import McpSyncModal from './components/McpSyncModal.vue';
 import CreateNovelModal from './components/CreateNovelModal.vue';
 import ErrorNoticeModal from './components/ErrorNoticeModal.vue';
 import BackupSnapshotModal from './components/BackupSnapshotModal.vue';
+import StorageSettingsModal from './components/StorageSettingsModal.vue';
 import CharacterArchiveModal from './components/character/CharacterArchiveModal.vue';
 import ForeshadowKanbanModal from './components/foreshadow/ForeshadowKanbanModal.vue';
 import ForeshadowDetailModal from './components/foreshadow/ForeshadowDetailModal.vue';
