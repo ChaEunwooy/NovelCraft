@@ -1,0 +1,338 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:NovelCraft.ViewModels"
+        xmlns:models="using:NovelCraft.Core.Models"
+        xmlns:controls="using:NovelCraft.Desktop.Controls"
+        x:Class="NovelCraft.Desktop.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="码字神器 - 企业级小说创作系统 (NovelCraft Enterprise)"
+        Width="1440" Height="900"
+        MinWidth="1080" MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        Background="#F8FAFC">
+
+    <Window.Styles>
+        <!-- 全局明亮高对比度白色主题样式 (防散光、清晰锐利) -->
+        <Style Selector="Button.tool-btn">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.tool-btn:pointerover">
+            <Setter Property="Background" Value="#F1F5F9"/>
+            <Setter Property="BorderBrush" Value="#4F46E5"/>
+            <Setter Property="Foreground" Value="#4F46E5"/>
+        </Style>
+
+        <Style Selector="Button.accent-btn">
+            <Setter Property="Background" Value="#4F46E5"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#4338CA"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.accent-btn:pointerover">
+            <Setter Property="Background" Value="#4338CA"/>
+        </Style>
+
+        <Style Selector="TextBox.editor-box">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="LineHeight" Value="36"/>
+            <Setter Property="FontFamily" Value="Kaiti, 楷体, STKaiti, FangSong, 仿宋, Microsoft YaHei, serif"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="AcceptsTab" Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="40, *">
+
+        <!-- ================= 顶部系统标题栏 (亮白风格) ================= -->
+        <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="14,0">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                <!-- 左侧 Logo & 状态 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Border Background="#4F46E5" CornerRadius="6" Width="24" Height="24">
+                        <TextBlock Text="码" Foreground="#FFFFFF" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="码字神器 Enterprise .NET 9" Foreground="#4F46E5" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                    <Border Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="10" Padding="8,2">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Ellipse Fill="#059669" Width="6" Height="6"/>
+                            <TextBlock Text="{Binding Editor.SaveStatus}" Foreground="#059669" FontWeight="Medium" FontSize="11"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- 右侧全局控制工具 -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Classes="tool-btn" Command="{Binding Sider.ToggleCollapseCommand}" ToolTip.Tip="展开/收起目录树">
+                        <TextBlock Text="📑 目录树"/>
+                    </Button>
+                    <Button Classes="tool-btn" Command="{Binding ToggleMindMapCommand}" ToolTip.Tip="展开/收起思维导图">
+                        <TextBlock Text="🧠 思维导图"/>
+                    </Button>
+                    <Button Classes="tool-btn">
+                        <TextBlock Text="☀️ 明亮清晰"/>
+                    </Button>
+                    <Button Classes="accent-btn">
+                        <TextBlock Text="🚀 导出与发布"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ================= 四分区主工作台 ================= -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto, *, Auto">
+
+            <!-- ================= 【板块一：左侧 Sider 导航与大纲树】 ================= -->
+            <Border Grid.Column="0" Width="260" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="0,0,1,0"
+                    IsVisible="{Binding !Sider.IsCollapsed}">
+                <Grid RowDefinitions="Auto, Auto, *, Auto">
+
+                    <!-- 工作小说下拉切换与操作 -->
+                    <Border Grid.Row="0" Padding="10,10" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Text="📚 当前工作小说" Foreground="#64748B" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Classes="tool-btn" Padding="6,2" FontSize="11" Command="{Binding Sider.CreateNewBookCommand}" ToolTip.Tip="创建一本全新的小说作品">
+                                    <TextBlock Text="+ 新建书"/>
+                                </Button>
+                            </Grid>
+
+                            <!-- 小说切换选择器 -->
+                            <ComboBox ItemsSource="{Binding Sider.Books}" SelectedItem="{Binding Sider.SelectedBook, Mode=TwoWay}"
+                                      HorizontalAlignment="Stretch" Background="#F8FAFC" BorderBrush="#CBD5E1" CornerRadius="6" Padding="8,4">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="{Binding Title}" Foreground="#0F172A" FontWeight="Bold" FontSize="12"/>
+                                            <TextBlock Text="{Binding TotalWordCount, StringFormat='{}已创作 {0:N0} 字'}" Foreground="#64748B" FontSize="10"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+
+                            <!-- 分卷与新增章快捷栏 -->
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Text="卷章大纲" Foreground="#64748B" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Classes="tool-btn" Padding="6,2" FontSize="11" Command="{Binding Sider.AddNewChapterCommand}" ToolTip.Tip="在当前分卷下添加新章节">
+                                    <TextBlock Text="+ 加一章"/>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 分类标签 -->
+                    <Border Grid.Row="1" Background="#F1F5F9" CornerRadius="8" Margin="10,10,10,4" Padding="3">
+                        <Grid ColumnDefinitions="*, *, *">
+                            <Border Grid.Column="0" Background="#FFFFFF" CornerRadius="6" Padding="0,5">
+                                <TextBlock Text="章节目录" Foreground="#0F172A" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="人物世界观" Foreground="#64748B" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="伏笔看板" Foreground="#64748B" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- 卷章列表 -->
+                    <ScrollViewer Grid.Row="2" Margin="6,8">
+                        <ItemsControl ItemsSource="{Binding Sider.Volumes}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <!-- 分卷头 -->
+                                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,0,0,4">
+                                            <Grid ColumnDefinitions="*, Auto">
+                                                <TextBlock Text="{Binding Title}" Foreground="#1E293B" FontWeight="Bold" FontSize="12"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding WordCount, StringFormat='{}{0}字'}" Foreground="#94A3B8" FontSize="10"/>
+                                            </Grid>
+                                        </Border>
+                                        <!-- 章节项 (点击即刻切换正文) -->
+                                        <ItemsControl ItemsSource="{Binding Chapters}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6"
+                                                            Margin="10,2,0,2" Padding="8,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                                            Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).Sider.SelectChapterCommand}"
+                                                            CommandParameter="{Binding}" Cursor="Hand">
+                                                        <Grid ColumnDefinitions="*, Auto">
+                                                            <TextBlock Text="{Binding Title}" Foreground="#334155" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding WordCount, StringFormat='{}{0}字'}" Foreground="#94A3B8" FontSize="10"/>
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- 底部工具栏 -->
+                    <Border Grid.Row="3" Background="#FAFAFA" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Padding="8">
+                        <UniformGrid Columns="4">
+                            <Button Classes="tool-btn" HorizontalAlignment="Stretch" Margin="2" Padding="2,4"><TextBlock Text="👥人物" FontSize="10" HorizontalAlignment="Center"/></Button>
+                            <Button Classes="tool-btn" HorizontalAlignment="Stretch" Margin="2" Padding="2,4"><TextBlock Text="⏳历史" FontSize="10" HorizontalAlignment="Center"/></Button>
+                            <Button Classes="tool-btn" HorizontalAlignment="Stretch" Margin="2" Padding="2,4"><TextBlock Text="🔍敏感" FontSize="10" HorizontalAlignment="Center"/></Button>
+                            <Button Classes="tool-btn" HorizontalAlignment="Stretch" Margin="2" Padding="2,4"><TextBlock Text="⚙️设置" FontSize="10" HorizontalAlignment="Center"/></Button>
+                        </UniformGrid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- ================= 中间区域 (中上简介 + 中下码字) ================= -->
+            <Grid Grid.Column="1" RowDefinitions="Auto, *">
+
+                <!-- ================= 【板块二：中上 小说简介信息 (明亮纯白)】 ================= -->
+                <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="18,12">
+                    <Grid ColumnDefinitions="Auto, *, Auto">
+
+                        <!-- 封面与书名梗概 -->
+                        <Border Grid.Column="0" Background="#4F46E5" Width="46" Height="62" CornerRadius="6" Margin="0,0,14,0">
+                            <TextBlock Text="星渊&#x0a;之上" Foreground="#FFFFFF" FontWeight="Bold" FontSize="11" TextAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding NovelInfo.Title}" Foreground="#0F172A" FontWeight="Bold" FontSize="15"/>
+                                <Border Background="#EEF2FF" BorderBrush="#C7D2FE" BorderThickness="1" CornerRadius="4" Padding="6,1">
+                                    <TextBlock Text="科幻玄幻" Foreground="#4F46E5" FontWeight="SemiBold" FontSize="10"/>
+                                </Border>
+                                <Border Background="#F1F5F9" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="4" Padding="6,1">
+                                    <TextBlock Text="升级暴爽" Foreground="#475569" FontSize="10"/>
+                                </Border>
+                                <Border Background="#F1F5F9" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="4" Padding="6,1">
+                                    <TextBlock Text="日更万字" Foreground="#475569" FontSize="10"/>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding NovelInfo.Synopsis}" Foreground="#475569" FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="620"/>
+                        </StackPanel>
+
+                        <!-- 数据看板 -->
+                        <Border Grid.Column="2" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="14,8">
+                            <StackPanel Orientation="Horizontal" Spacing="18">
+                                <StackPanel HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding NovelInfo.TodayWordCount}" Foreground="#D97706" FontWeight="Bold" FontSize="15" HorizontalAlignment="Right"/>
+                                    <TextBlock Text="今日已写 (字)" Foreground="#64748B" FontSize="10" HorizontalAlignment="Right"/>
+                                </StackPanel>
+                                <StackPanel HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding NovelInfo.TypingSpeed}" Foreground="#0F172A" FontWeight="Bold" FontSize="15" HorizontalAlignment="Right"/>
+                                    <TextBlock Text="码字时速 (字/h)" Foreground="#64748B" FontSize="10" HorizontalAlignment="Right"/>
+                                </StackPanel>
+                                <StackPanel HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding NovelInfo.TotalProgress}" Foreground="#059669" FontWeight="Bold" FontSize="15" HorizontalAlignment="Right"/>
+                                    <TextBlock Text="总进度 (19.3%)" Foreground="#64748B" FontSize="10" HorizontalAlignment="Right"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- ================= 【板块四：中下 核心沉浸码字区 (纯白护眼高对比)】 ================= -->
+                <Grid Grid.Row="1" RowDefinitions="40, *, 28" Background="#FFFFFF">
+
+                    <!-- 编辑器顶部工具条 -->
+                    <Border Grid.Row="0" Background="#FAFAFA" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="16,0">
+                        <Grid ColumnDefinitions="Auto, *, Auto">
+                            <TextBox Grid.Column="0" Text="{Binding Editor.ChapterTitle}" FontWeight="Bold" FontSize="14" Foreground="#0F172A"
+                                     Background="Transparent" BorderThickness="0" Width="260" VerticalAlignment="Center"/>
+
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Button Classes="tool-btn" Command="{Binding Editor.FormatTextCommand}" ToolTip.Tip="一键段落缩进两空格并规范标点">
+                                    <TextBlock Text="📐 一键排版"/>
+                                </Button>
+                                <Button Classes="tool-btn" Command="{Binding Editor.ScanSensitiveWordsCommand}" ToolTip.Tip="违禁词与敏感词即时扫描">
+                                    <TextBlock Text="🛡️ 敏感词检测"/>
+                                </Button>
+                                <Button Classes="tool-btn" Command="{Binding Editor.ToggleTypewriterCommand}" ToolTip.Tip="打字机行居中模式">
+                                    <TextBlock Text="⌨️ 打字机"/>
+                                </Button>
+                                <Button Classes="tool-btn" ToolTip.Tip="防摸鱼锁定">
+                                    <TextBlock Text="🔒 小黑屋"/>
+                                </Button>
+                                <Button Classes="tool-btn" Command="{Binding Editor.TriggerAiCoPilotCommand}" Foreground="#4F46E5" FontWeight="SemiBold">
+                                    <TextBlock Text="✨ AI续写润色"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- 正文多行输入框 (纯白底、深黑字、防散光) -->
+                    <ScrollViewer Grid.Row="1" Margin="40,20,40,20" Background="#FFFFFF">
+                        <TextBox Classes="editor-box" Text="{Binding Editor.Content, Mode=TwoWay}"
+                                 PlaceholderText="在此开启宏大史诗创作……支持 SQLite WAL 毫秒级事务自动保存。" />
+                    </ScrollViewer>
+
+                    <!-- 底部状态栏 -->
+                    <Border Grid.Row="2" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Padding="16,0">
+                        <Grid ColumnDefinitions="Auto, *, Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Editor.WordCount, StringFormat='{}本章字数：{0:N0} 字'}" Foreground="#475569" FontWeight="Medium" FontSize="11"/>
+                                <TextBlock Text="{Binding Editor.ParagraphCount, StringFormat='{}段落数：{0} 段'}" Foreground="#475569" FontSize="11"/>
+                                <TextBlock Text="编码：UTF-8 (SQLite WAL 事务保护就绪)" Foreground="#64748B" FontSize="11"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                                <TextBlock Text="极速渲染引擎：.NET 9 + Avalonia" Foreground="#64748B" FontSize="11"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- ================= 【板块三：右侧 可自主编辑思维导图 (明亮风格)】 ================= -->
+            <Border Grid.Column="2" Width="420" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1,0,0,0"
+                    IsVisible="{Binding !IsMindMapCollapsed}">
+                <Grid RowDefinitions="40, *">
+
+                    <!-- 导图标题与操作 -->
+                    <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="14,0">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBlock Text="🧠 剧情与人物思维导图" Foreground="#0F172A" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                <Button Classes="tool-btn" Command="{Binding MindMap.AddChildNodeCommand}" ToolTip.Tip="添加子节点" Padding="8,3">+</Button>
+                                <Button Classes="tool-btn" Command="{Binding MindMap.DeleteNodeCommand}" ToolTip.Tip="删除选中节点" Padding="8,3">-</Button>
+                                <Button Classes="tool-btn" Command="{Binding MindMap.ResetViewCommand}" ToolTip.Tip="重置视角" Padding="6,3">🎯</Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- 真正的二维交互式思维导图画布 (贝塞尔曲线连线 + 点阵背景 + 缩放拖拽) -->
+                    <Grid Grid.Row="1">
+                        <controls:MindMapCanvas ViewModel="{Binding MindMap}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+
+                        <!-- 右下角悬浮缩放控制条 -->
+                        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="14"
+                                Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="4">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Button Classes="tool-btn" Command="{Binding MindMap.ZoomInCommand}" ToolTip.Tip="放大画布" Padding="6,3" FontWeight="Bold">+</Button>
+                                <Button Classes="tool-btn" Command="{Binding MindMap.ZoomOutCommand}" ToolTip.Tip="缩小画布" Padding="6,3" FontWeight="Bold">-</Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 左下角操作提示 -->
+                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="14"
+                                Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="4" Padding="6,3">
+                            <TextBlock Text="💡 提示：按住拖动画布 | 滚轮缩放 | 点击节点选中" Foreground="#64748B" FontSize="10"/>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+
+        </Grid>
+    </Grid>
+
+</Window>

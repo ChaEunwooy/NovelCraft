@@ -1,0 +1,50 @@
+{
+  "name": "novelcraft-desktop",
+  "version": "1.0.0",
+  "description": "码字神器 - 企业级小说创作与签约发布系统",
+  "main": "main.js",
+  "author": "NovelCraft Team",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^4.22.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^34.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.novelcraft.app",
+    "productName": "码字神器",
+    "directories": {
+      "output": "../release-package"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "码字神器"
+    },
+    "files": [
+      "dist/**/*",
+      "server/**/*",
+      "main.js",
+      "package.json"
+    ],
+    "asar": true
+  }
+}

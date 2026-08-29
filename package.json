@@ -1,0 +1,11 @@
+{
+  "name": "novelcraft-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "码字神器 - 沉浸式小说创作工作台与番茄作家免密生态",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "start": "npm --prefix frontend run start",
+    "build": "npm --prefix frontend run build"
+  }
+}
