@@ -721,11 +721,13 @@ async function onSelectChapter(chap: Chapter) {
     }
   }
 
-  // 优先从本地磁盘物理 TXT 文件 (data-storage/chapters/{bookId}/chap_{id}.txt) 载入正文
+  // 优先从本地磁盘物理 TXT 文件载入正文 (仅在内容真正有差异时才更新，防止重复渲染造成滚动条复位)
   const diskContent = await novelApi.fetchChapterDiskContent(selectedBookId.value, chap.id);
   if (diskContent && diskContent.length > 0) {
-    chap.content = diskContent;
-    chap.wordCount = diskContent.replace(/\s/g, '').length;
+    if (chap.content !== diskContent) {
+      chap.content = diskContent;
+      chap.wordCount = diskContent.replace(/\s/g, '').length;
+    }
   } else if (!chap.content || chap.content.includes('此章节已成功从番茄作家后台拉取')) {
     // 磁盘未缓存时，自动从番茄后台拉取真实万字正文并立即持久化写入本地磁盘物理文件
     const realId = chap.tomatoChapterId || chap.id.replace('chap_', '');

@@ -236,12 +236,22 @@ watch(
   { immediate: true }
 );
 
-// 外部磁盘数据热推进来时，若当前用户未聚焦打字，则安全同步
+// 外部磁盘数据热推进来时，若当前用户未聚焦打字，安全同步并精准保持当前滚动位置（绝不回弹到顶部）
 watch(
   () => props.chapter?.content,
   (newVal) => {
     if (!isEditorFocused.value && newVal !== undefined && newVal !== localContent.value) {
+      const textarea = textareaRef.value;
+      const prevScrollTop = textarea ? textarea.scrollTop : 0;
+      
       localContent.value = newVal;
+      
+      // 🌟 核心防回弹：在 Vue DOM 更新完成后，完美复原用户的阅读滚动位置
+      nextTick(() => {
+        if (textarea && prevScrollTop > 0) {
+          textarea.scrollTop = prevScrollTop;
+        }
+      });
     }
   }
 );
