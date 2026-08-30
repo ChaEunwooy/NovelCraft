@@ -398,31 +398,13 @@ function onLogoutTomato() {
   showToast(`🚪 已退出【${currentName}】的番茄账号登录状态`);
 }
 
-// 5. 一键与番茄后台差分对齐
-function onSyncTomato() {
+// 5. 一键与番茄后台差分状态对齐 (只对齐线上状态，绝对不覆盖本地正文与未发布草稿)
+async function onSyncTomato() {
   if (!isTomatoConnected.value) {
     isTomatoModalOpen.value = true;
     return;
   }
-
-  if (currentBook.value) {
-    let count = 0;
-    (currentBook.value.volumes || []).forEach((vol, vIdx) => {
-      (vol.chapters || []).forEach((chap, cIdx) => {
-        if (cIdx === 0 && vIdx === 0) {
-          chap.publishStatus = 'published';
-        } else if (cIdx === 1) {
-          chap.publishStatus = 'draft';
-        } else {
-          chap.publishStatus = 'unpushed';
-        }
-        count++;
-      });
-    });
-    novelApi.getBooks();
-    showToast(`🔄 作者【${tomatoAuthorName.value}】：已对齐 ${count} 个章节差分状态！`);
-    isTomatoModalOpen.value = false;
-  }
+  await onSyncMcpBook();
 }
 
 // 6. 番茄 MCP 真实书架一键直连拉取 (完全纯动态网络拉取，0硬编码)

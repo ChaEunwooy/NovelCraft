@@ -729,35 +729,89 @@ export const novelApi = {
     return '';
   },
 
-  // 13. 真实动态拉取番茄官方章节列表并导入本地 (零硬编码，全走网络响应解析)
+  // 13. 真实动态拉取番茄官方章节列表并对齐本地 (本地绝对优先，零覆盖风险)
   async importTomatoLiveNovelByApi(tomatoBookData: any, chaptersDataList: any[]): Promise<NovelBook> {
-    const bookId = 'fq_book_' + (tomatoBookData.book_id || Date.now());
-    const volId = 'fq_vol_' + Date.now();
+    const rawBookId = String(tomatoBookData.book_id || '');
+    const books = getLocalBooks();
+    
+    // 优先匹配本地已有书籍 (通过 id 或 tomatoBookId 或 书名相同)
+    let existingBook = books.find(b => 
+      b.tomatoBookId === rawBookId || 
+      b.id === `fq_book_${rawBookId}` ||
+      (tomatoBookData.book_name && b.title.replace(/[《》\s]/g, '') === tomatoBookData.book_name.replace(/[《》\s]/g, ''))
+    );
 
-    const convertedChapters: Chapter[] = (chaptersDataList || []).map((c: any, idx: number) => ({
-      id: String(c.item_id || c.id || `chap_${idx}`),
-      volumeId: volId,
+    const convertedOnlineChapters: Chapter[] = (chaptersDataList || []).map((c: any, idx: number) => ({
+      id: String(c.item_id || c.id || `chap_online_${idx}`),
+      volumeId: 'vol_default',
       title: c.title || `第${idx + 1}章`,
       content: c.content || '',
       wordCount: c.word_number || c.wordCount || 0,
       paragraphCount: Math.round((c.word_number || c.wordCount || 0) / 80) || 1,
       publishStatus: c.display_status === 1 ? 'published' : 'draft',
       tomatoChapterId: String(c.item_id || c.id),
-      lastPushedAt: '已同步番茄线上'
+      lastPushedAt: '已对齐番茄线上'
     }));
 
-    const totalWords = convertedChapters.reduce((sum, c) => sum + (c.wordCount || 0), 0);
+    if (existingBook) {
+      // 🌟 铁壁保护：本地已有书籍，只做线上状态对齐，绝对不覆盖任何本地正文与未发布章节！
+      if (!existingBook.tomatoBookId && rawBookId) {
+        existingBook.tomatoBookId = rawBookId;
+      }
 
-    const mcpBook: NovelBook = {
+      const onlineMapByTitle = new Map<string, any>();
+      const onlineMapById = new Map<string, any>();
+      convertedOnlineChapters.forEach(c => {
+        const cleanT = c.title.replace(/^第0*(\d+)章?\s*/, '$1_').trim();
+        onlineMapByTitle.set(cleanT, c);
+        onlineMapById.set(c.tomatoChapterId, c);
+      });
+
+      // 遍历本地所有分卷与章节进行状态回填
+      (existingBook.volumes || []).forEach(vol => {
+        (vol.chapters || []).forEach(localChap => {
+          const cleanLocalT = localChap.title.replace(/^第0*(\d+)章?\s*/, '$1_').trim();
+          const matchedOnline = (localChap.tomatoChapterId && onlineMapById.get(localChap.tomatoChapterId)) ||
+                                onlineMapByTitle.get(cleanLocalT) ||
+                                onlineMapByTitle.get(localChap.title.trim());
+
+          if (matchedOnline) {
+            localChap.publishStatus = matchedOnline.publishStatus;
+            localChap.tomatoChapterId = matchedOnline.tomatoChapterId;
+            localChap.lastPushedAt = '已同步番茄线上状态';
+          } else {
+            // 本地独有的章节（未推送到云端）：保持本地草稿状态不变
+            if (!localChap.publishStatus || localChap.publishStatus === 'published') {
+              localChap.publishStatus = 'unpushed';
+            }
+          }
+        });
+      });
+
+      // 检查线上是否有本地完全缺失的章节（例如在手机端新建的）
+      const localTitles = new Set((existingBook.volumes || []).flatMap(v => (v.chapters || []).map(c => c.title.trim())));
+      const onlineMissingFromLocal = convertedOnlineChapters.filter(c => !localTitles.has(c.title.trim()));
+      if (onlineMissingFromLocal.length > 0 && existingBook.volumes && existingBook.volumes.length > 0) {
+        existingBook.volumes[0].chapters.push(...onlineMissingFromLocal);
+      }
+
+      saveLocalBooks(books);
+      return existingBook;
+    }
+
+    // 若本地完全没有这本书，则作为全新书籍导入
+    const bookId = 'fq_book_' + (rawBookId || Date.now());
+    const volId = 'vol_' + Date.now();
+    const newBook: NovelBook = {
       id: bookId,
-      tomatoBookId: String(tomatoBookData.book_id),
-      title: tomatoBookData.book_name ? `《${tomatoBookData.book_name}》` : '《番茄签约作品》',
+      tomatoBookId: rawBookId,
+      title: tomatoBookData.book_name ? (tomatoBookData.book_name.startsWith('《') ? tomatoBookData.book_name : `《${tomatoBookData.book_name}》`) : '《番茄签约作品》',
       author: '番茄签约作家',
       coverGradient: 'linear-gradient(135deg, #10b981, #059669)',
       tags: '番茄首发,连载中',
       synopsis: tomatoBookData.abstract || '【番茄官方签约作品】：动态拉取于番茄作家专区云端后台。',
       targetWordCount: 1000000,
-      totalWordCount: totalWords || tomatoBookData.word_count || 0,
+      totalWordCount: tomatoBookData.word_count || 0,
       todayWordCount: 0,
       volumes: [
         {
@@ -765,53 +819,16 @@ export const novelApi = {
           bookId: bookId,
           title: '第一卷：默认分卷',
           orderIndex: 1,
-          wordCount: totalWords || tomatoBookData.word_count || 0,
+          wordCount: tomatoBookData.word_count || 0,
           collapsed: false,
-          chapters: convertedChapters
+          chapters: convertedOnlineChapters
         }
       ]
     };
 
-    const books = getLocalBooks();
-    const existingIdx = books.findIndex(b => b.id === bookId || b.tomatoBookId === String(tomatoBookData.book_id));
-    if (existingIdx !== -1) {
-      const existingBook = books[existingIdx];
-      // 🌟 核心保护：智能增量合并，绝对不覆盖/丢弃本地新建但未发布的草稿章节！
-      const localChapters = (existingBook.volumes || []).flatMap(v => v.chapters || []);
-      const cloudTitles = new Set(convertedChapters.map(c => c.title.trim()));
-      const cloudTomatoIds = new Set(convertedChapters.map(c => c.tomatoChapterId));
-
-      // 提取本地独有的未发布草稿章节
-      const localOnlyDrafts = localChapters.filter(c => {
-        return !cloudTitles.has(c.title.trim()) && (!c.tomatoChapterId || !cloudTomatoIds.has(c.tomatoChapterId));
-      });
-
-      // 完美合并：云端线上章节 + 本地创作中的草稿章节
-      const mergedChapters = [...convertedChapters, ...localOnlyDrafts];
-      const mergedTotalWords = mergedChapters.reduce((sum, c) => sum + (c.wordCount || 0), 0);
-
-      existingBook.totalWordCount = mergedTotalWords;
-      if (!existingBook.volumes || existingBook.volumes.length === 0) {
-        existingBook.volumes = [{
-          id: volId,
-          bookId: existingBook.id,
-          title: '第一卷：默认分卷',
-          orderIndex: 1,
-          wordCount: mergedTotalWords,
-          collapsed: false,
-          chapters: mergedChapters
-        }];
-      } else {
-        existingBook.volumes[0].chapters = mergedChapters;
-        existingBook.volumes[0].wordCount = mergedTotalWords;
-      }
-      books[existingIdx] = existingBook;
-    } else {
-      books.unshift(mcpBook);
-    }
-
+    books.unshift(newBook);
     saveLocalBooks(books);
-    return mcpBook;
+    return newBook;
   },
 
   // 15. 独立物理快照与版本保险箱 (查询/新建/还原/删除)
