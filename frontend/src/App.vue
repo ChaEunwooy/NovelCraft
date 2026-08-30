@@ -936,11 +936,12 @@ async function onUpdateChapter(title: string, content: string) {
   }
 }
 
-function onUpdateMetrics(typingTime: number, thinkingTime: number) {
+function onUpdateMetrics(typingTime: number, thinkingTime: number, metricsDate?: string) {
   if (currentChapter.value) {
     currentChapter.value.typingTimeSeconds = typingTime;
     currentChapter.value.thinkingTimeSeconds = thinkingTime;
-    novelApi.saveChapterMetrics(currentChapter.value.id, typingTime, thinkingTime);
+    if (metricsDate) currentChapter.value.metricsDate = metricsDate;
+    novelApi.saveChapterMetrics(currentChapter.value.id, typingTime, thinkingTime, metricsDate);
   }
 }
 

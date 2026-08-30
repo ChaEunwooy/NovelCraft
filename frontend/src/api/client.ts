@@ -677,15 +677,17 @@ export const novelApi = {
     }
   },
 
-  // 12. 保存章节独立的打字与思考时间
-  saveChapterMetrics(chapterId: string, typingTime: number, thinkingTime: number): void {
+  // 12. 保存章节独立的打字与思考时间 (支持每日自动跨天重置)
+  saveChapterMetrics(chapterId: string, typingTime: number, thinkingTime: number, metricsDate?: string): void {
     const books = getLocalBooks();
+    const today = metricsDate || new Date().toISOString().slice(0, 10);
     for (const b of books) {
       for (const vol of b.volumes || []) {
         for (const chap of vol.chapters || []) {
           if (chap.id === chapterId) {
             chap.typingTimeSeconds = typingTime;
             chap.thinkingTimeSeconds = thinkingTime;
+            chap.metricsDate = today;
             saveLocalBooks(books);
             return;
           }

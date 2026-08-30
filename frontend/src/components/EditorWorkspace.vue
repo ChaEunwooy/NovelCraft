@@ -86,13 +86,16 @@
       <div class="statusbar-left">
         <span class="status-strong">本章字数：{{ (chapter?.wordCount || 0).toLocaleString() }} 字</span>
         <span>段落数：{{ chapter?.paragraphCount || 0 }} 段</span>
-        <!-- 章节独立打字时间与思考时间 -->
-        <span class="timer-item" title="本章累计键盘连续打字时间">
-          ⌨️ 打字：<strong class="timer-value text-indigo">{{ formatDuration(typingSeconds) }}</strong>
+        <!-- 今日打字时间与思考时间 (每日0点自动重置) -->
+        <span class="timer-item" title="今日累计键盘连续打字时间（每日0点自动清零重置）">
+          ⌨️ 今日打字：<strong class="timer-value text-indigo">{{ formatDuration(typingSeconds) }}</strong>
         </span>
-        <span class="timer-item" title="本章累计停顿构思思考时间">
-          🤔 思考：<strong class="timer-value text-amber">{{ formatDuration(thinkingSeconds) }}</strong>
+        <span class="timer-item" title="今日累计停顿构思思考时间（每日0点自动清零重置）">
+          🤔 今日思考：<strong class="timer-value text-amber">{{ formatDuration(thinkingSeconds) }}</strong>
         </span>
+        <button class="reset-metrics-pill" @click="resetDailyMetrics" title="手动重置今日码字与思考时间">
+          🔄 重置今日统计
+        </button>
       </div>
 
       <div class="statusbar-right">
@@ -114,7 +117,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update-title', title: string): void;
   (e: 'update-chapter', title: string, content: string): void;
-  (e: 'update-metrics', typingTime: number, thinkingTime: number): void;
+  (e: 'update-metrics', typingTime: number, thinkingTime: number, metricsDate?: string): void;
   (e: 'push-tomato-draft'): void;
   (e: 'push-tomato-publish'): void;
   (e: 'format-text'): void;
@@ -169,20 +172,53 @@ let lastKeystrokeTime = 0;
 let timerInterval: any = null;
 let saveTimer: any = null;
 
-// 当切换章节时，重新对齐本章标题、正文与计时数据
+function getTodayDateStr(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function resetDailyMetrics() {
+  typingSeconds.value = 0;
+  thinkingSeconds.value = 0;
+  const today = getTodayDateStr();
+  if (props.chapter) {
+    props.chapter.typingTimeSeconds = 0;
+    props.chapter.thinkingTimeSeconds = 0;
+    props.chapter.metricsDate = today;
+  }
+  emit('update-metrics', 0, 0, today);
+}
+
+// 当切换章节时，重新对齐本章标题、正文与每日计时数据
 watch(
   () => props.chapter?.id,
   (newId, oldId) => {
+    const today = getTodayDateStr();
     // 1. 保存上一章的计时
     if (oldId) {
-      emit('update-metrics', typingSeconds.value, thinkingSeconds.value);
+      emit('update-metrics', typingSeconds.value, thinkingSeconds.value, today);
     }
-    // 2. 载入新章节的独立计时数据与正文
+    // 2. 载入新章节的独立计时数据与正文 (跨天自动重置为0)
     if (props.chapter) {
       localTitle.value = props.chapter.title || '';
       localContent.value = props.chapter.content || '';
-      typingSeconds.value = props.chapter.typingTimeSeconds || 0;
-      thinkingSeconds.value = props.chapter.thinkingTimeSeconds || 0;
+      
+      // 🌟 跨天自动重置：如果保存的记录不是今天，则自动清零重置为 0
+      if (props.chapter.metricsDate && props.chapter.metricsDate !== today) {
+        typingSeconds.value = 0;
+        thinkingSeconds.value = 0;
+        props.chapter.typingTimeSeconds = 0;
+        props.chapter.thinkingTimeSeconds = 0;
+        props.chapter.metricsDate = today;
+        emit('update-metrics', 0, 0, today);
+      } else {
+        typingSeconds.value = props.chapter.typingTimeSeconds || 0;
+        thinkingSeconds.value = props.chapter.thinkingTimeSeconds || 0;
+        props.chapter.metricsDate = today;
+      }
     } else {
       localTitle.value = '';
       localContent.value = '';
@@ -220,6 +256,18 @@ onMounted(() => {
   timerInterval = setInterval(() => {
     if (!props.chapter) return;
 
+    const today = getTodayDateStr();
+    // 🌟 实时跨天检测（例如写作跨过午夜0点时自动清零重置）
+    if (props.chapter.metricsDate && props.chapter.metricsDate !== today) {
+      typingSeconds.value = 0;
+      thinkingSeconds.value = 0;
+      props.chapter.typingTimeSeconds = 0;
+      props.chapter.thinkingTimeSeconds = 0;
+      props.chapter.metricsDate = today;
+      emit('update-metrics', 0, 0, today);
+      return;
+    }
+
     const now = Date.now();
     // 如果最近 2.5 秒内有按键输入，判定为正在打字
     if (lastKeystrokeTime > 0 && now - lastKeystrokeTime < 2500) {
@@ -236,7 +284,7 @@ onMounted(() => {
 
     // 每 10 秒自动固化一次计时数据
     if ((typingSeconds.value + thinkingSeconds.value) % 10 === 0) {
-      emit('update-metrics', typingSeconds.value, thinkingSeconds.value);
+      emit('update-metrics', typingSeconds.value, thinkingSeconds.value, today);
     }
   }, 1000);
 });
@@ -609,4 +657,29 @@ function handleFormat() {
 .text-amber {
   color: #d97706;
 }
+</style>
+
+<style scoped>
+
+.reset-metrics-pill {
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: var(--bg-tertiary, #f3f4f6);
+  color: var(--text-muted, #6b7280);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.reset-metrics-pill:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
 </style>

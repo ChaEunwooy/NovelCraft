@@ -9,6 +9,7 @@ export interface Chapter {
   paragraphCount: number;
   typingTimeSeconds?: number;
   thinkingTimeSeconds?: number;
+  metricsDate?: string;
   publishStatus?: PublishStatus;
   tomatoChapterId?: string;
   lastPushedAt?: string;
