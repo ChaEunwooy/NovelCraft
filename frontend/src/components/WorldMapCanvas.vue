@@ -4,30 +4,30 @@
     <div class="worldmap-toolbar">
       <!-- 地图底图预设切换 -->
       <div class="tool-group preset-group">
-        <span class="toolbar-label">🗺️ 底图模式:</span>
-        <button
-          class="map-preset-btn"
-          :class="{ active: currentMapPreset === 'earth' }"
-          @click="switchMapPreset('earth')"
-          title="载入真实地球七大洲与大洋高精度世界地图"
-        >
-          🌍 真实地球世界地图
-        </button>
+        <span class="toolbar-label">🗺️ 地图底图:</span>
         <button
           class="map-preset-btn"
           :class="{ active: currentMapPreset === 'china' }"
           @click="switchMapPreset('china')"
-          title="载入中国全域探险地质图 (含长沙、郴州、秦岭、长白山、昆仑山等核心剧情地标)"
+          title="中国真实地理水系山脉底图 (适合规划本土剧情)"
         >
-          🇨🇳 华夏全域探险图
+          🇨🇳 华夏地理全图
+        </button>
+        <button
+          class="map-preset-btn"
+          :class="{ active: currentMapPreset === 'earth' }"
+          @click="switchMapPreset('earth')"
+          title="真实地球七大洲世界全图"
+        >
+          🌍 真实地球全景
         </button>
         <button
           class="map-preset-btn"
           :class="{ active: currentMapPreset === 'blank' }"
           @click="switchMapPreset('blank')"
-          title="空白复古羊皮纸画板 (自由手绘创作)"
+          title="空白复古羊皮纸 (纯自由手绘)"
         >
-          📜 空白画板
+          📜 纯净空白画板
         </button>
       </div>
 
@@ -47,7 +47,7 @@
           class="map-tool-btn"
           :class="{ active: currentTool === 'brush' }"
           @click="currentTool = 'brush'"
-          title="画笔工具 (手绘山川、河流、秘境边界)"
+          title="画笔工具 (手绘山川、水系、区域边界)"
         >
           🖌️ 笔刷
         </button>
@@ -63,17 +63,17 @@
           class="map-tool-btn"
           :class="{ active: currentTool === 'stamp' }"
           @click="currentTool = 'stamp'"
-          title="地标印章 (点击画布放置剧情势力、山脉、禁区)"
+          title="新建地标 (点击画布放置剧情地标)"
         >
-          🏰 地标印章
+          📍 新建地标
         </button>
         <button
           class="map-tool-btn"
           :class="{ active: currentTool === 'route' }"
           @click="currentTool = 'route'"
-          title="探险路线 (点击两点绘制连线)"
+          title="绘制路线 (点击两点绘制连线)"
         >
-          🚩 探险路线
+          🚩 绘制路线
         </button>
       </div>
 
@@ -115,8 +115,8 @@
       <!-- 画布操作组 -->
       <div class="tool-group map-actions-right">
         <button class="map-tool-btn" @click="undo" :disabled="historyStack.length === 0" title="撤销">↩️ 撤销</button>
-        <button class="map-tool-btn" @click="resetPresetAndClear" title="重置当前底图与地标">🔄 重置</button>
-        <button class="map-tool-btn highlight" @click="exportMapImage" title="导出超高清地图图片">💾 导出</button>
+        <button class="map-tool-btn" @click="resetPresetAndClear" title="重置当前底图">🔄 重置底图</button>
+        <button class="map-tool-btn highlight" @click="exportMapImage" title="导出超高清地图图片">💾 导出地图</button>
       </div>
     </div>
 
@@ -143,7 +143,6 @@
 
         <!-- 上层交互路线 SVG 层 -->
         <svg class="map-svg-layer">
-          <!-- 探险/行军路线虚线 -->
           <g v-for="route in mapRoutes" :key="route.id">
             <line
               :x1="route.x1"
@@ -160,7 +159,6 @@
               {{ route.label }}
             </text>
           </g>
-          <!-- 正在拉出的路线 -->
           <line
             v-if="isDrawingRoute && tempRoute"
             :x1="tempRoute.x1"
@@ -216,7 +214,7 @@
       </div>
 
       <div class="map-hint">
-        🗺️ 鼠标左键绘制/盖章/连线 | 拖拽可移动地标（双击改名） | 按住鼠标右键漫游 | 滚轮无级缩放
+        🗺️ 点击【新建地标】在任意位置放置剧情地点 | 自由拖拽地标 | 双击地名就地修改 | 按住鼠标右键漫游
       </div>
     </div>
   </div>
@@ -229,7 +227,7 @@ const props = defineProps<{
   bookId?: string;
 }>();
 
-type MapPreset = 'earth' | 'china' | 'blank';
+type MapPreset = 'china' | 'earth' | 'blank';
 const currentMapPreset = ref<MapPreset>('china');
 
 const currentTool = ref<'pan' | 'brush' | 'eraser' | 'stamp' | 'route'>('pan');
@@ -238,15 +236,15 @@ const brushWidth = ref(4);
 
 const brushColors = ['#8b4513', '#2b2416', '#dc2626', '#1e40af', '#065f46', '#7c3aed', '#d97706'];
 
-const selectedStampType = ref('story_city');
+const selectedStampType = ref('story_point');
 const stampList = [
-  { type: 'story_city', name: '剧情据点', icon: '📍' },
-  { type: 'story_danger', name: '绝境古斗', icon: '💀' },
-  { type: 'story_mountain', name: '灵山祖脉', icon: '🏔️' },
-  { type: 'story_temple', name: '神秘古刹', icon: '⛩️' },
-  { type: 'story_sea', name: '深海古沉船', icon: '⚓' },
-  { type: 'story_secret', name: '地底暗道', icon: '🗝️' },
-  { type: 'capital', name: '繁华都市', icon: '🏙️' }
+  { type: 'story_point', name: '剧情节点', icon: '📍' },
+  { type: 'story_base', name: '主角据点', icon: '🏮' },
+  { type: 'story_danger', name: '危险秘境', icon: '💀' },
+  { type: 'story_mountain', name: '深山古迹', icon: '🏔️' },
+  { type: 'story_water', name: '水系暗河', icon: '🌊' },
+  { type: 'story_secret', name: '地下暗道', icon: '🗝️' },
+  { type: 'story_city', name: '城市/城镇', icon: '🏙️' }
 ];
 
 interface Landmark {
@@ -272,7 +270,7 @@ const mapLandmarks = ref<Landmark[]>([]);
 const mapRoutes = ref<MapRoute[]>([]);
 const selectedLandmarkId = ref('');
 
-// 视口与缩放 (默认中心居中)
+// 视口与缩放
 const panX = ref(-100);
 const panY = ref(-80);
 const zoomLevel = ref(0.65);
@@ -340,11 +338,10 @@ function startDragLandmark(e: MouseEvent, lm: Landmark) {
   dragOffsetY = logicalY - lm.y;
 }
 
-// 行军路线绘制
+// 路线绘制
 const isDrawingRoute = ref(false);
 const tempRoute = ref<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
 
-// 初始化画板
 onMounted(() => {
   if (canvasRef.value) {
     ctx = canvasRef.value.getContext('2d', { willReadFrequently: true });
@@ -363,7 +360,7 @@ watch(() => props.bookId, () => {
   loadMapData();
 });
 
-// ==================== 🌍 地图底图绘制核心引擎 ====================
+// ==================== 🗺️ 真实纯净地理底图引擎 ====================
 
 function switchMapPreset(preset: MapPreset) {
   currentMapPreset.value = preset;
@@ -391,11 +388,11 @@ function drawParchmentBackground() {
   const w = canvasRef.value.width;
   const h = canvasRef.value.height;
 
-  // 1. 羊皮纸复古暖底色
+  // 1. 羊皮纸复古底色
   ctx.fillStyle = '#f8f2e4';
   ctx.fillRect(0, 0, w, h);
 
-  // 2. 绘制经纬网格度数线 (古风细虚线)
+  // 2. 经纬网格度数虚线
   ctx.save();
   ctx.strokeStyle = 'rgba(180, 160, 130, 0.35)';
   ctx.lineWidth = 1;
@@ -414,11 +411,10 @@ function drawParchmentBackground() {
   }
   ctx.restore();
 
-  // 3. 右下角绘制古典指南针罗盘玫瑰 (Compass Rose)
-  drawCompassRose(w - 220, h - 220, 90);
+  // 3. 右下角古典指南针罗盘
+  drawCompassRose(w - 200, h - 200, 80);
 }
 
-// 绘制古典罗盘玫瑰
 function drawCompassRose(cx: number, cy: number, r: number) {
   if (!ctx) return;
   ctx.save();
@@ -431,7 +427,6 @@ function drawCompassRose(cx: number, cy: number, r: number) {
   ctx.arc(cx, cy, r * 0.75, 0, Math.PI * 2);
   ctx.stroke();
 
-  // 指南针主尖角 (北/南/东/西)
   const angles = [0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2];
   angles.forEach((a, i) => {
     ctx.save();
@@ -457,99 +452,103 @@ function drawCompassRose(cx: number, cy: number, r: number) {
     ctx.restore();
   });
 
-  // 标注文王八卦/方位文字
-  ctx.font = 'bold 18px "Microsoft YaHei", serif';
+  ctx.font = 'bold 16px "Microsoft YaHei", serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#b91c1c';
-  ctx.fillText('北 (N)', cx, cy - r - 22);
+  ctx.fillText('北 (N)', cx, cy - r - 20);
   ctx.fillStyle = '#5c4a38';
-  ctx.fillText('南 (S)', cx, cy + r + 22);
-  ctx.fillText('东 (E)', cx + r + 26, cy);
-  ctx.fillText('西 (W)', cx - r - 26, cy);
+  ctx.fillText('南 (S)', cx, cy + r + 20);
+  ctx.fillText('东 (E)', cx + r + 24, cy);
+  ctx.fillText('西 (W)', cx - r - 24, cy);
   ctx.restore();
 }
 
-// ================= 🇨🇳 中国全域探险地图预设 =================
+// ================= 🇨🇳 真实中国地理水系底图 =================
 function loadChinaMapPreset() {
   if (!ctx || !canvasRef.value) return;
   drawParchmentBackground();
 
   ctx.save();
-  // 1. 绘制中国大陆版图主体 (高精度古风水墨矢量轮廓)
-  ctx.fillStyle = '#eddcc4'; // 陆地柔和杏黄
-  ctx.strokeStyle = '#7c5a38'; // 棕褐海岸边界线
+  // 1. 真实中国大陆版图轮廓
+  ctx.fillStyle = '#eddcc4';
+  ctx.strokeStyle = '#7c5a38';
   ctx.lineWidth = 3.5;
   ctx.lineJoin = 'round';
 
   ctx.beginPath();
-  // 起点：辽宁/鸭绿江口
   ctx.moveTo(1820, 680);
-  ctx.bezierCurveTo(1850, 620, 1920, 520, 1960, 420); // 东北吉林/黑龙江轮廓
-  ctx.bezierCurveTo(1990, 320, 1900, 240, 1800, 220); // 漠河/大兴安岭顶端
-  ctx.bezierCurveTo(1680, 240, 1600, 320, 1520, 380); // 内蒙古呼伦贝尔
-  ctx.bezierCurveTo(1380, 420, 1260, 460, 1100, 480); // 阴山/阿尔泰山脉
-  ctx.bezierCurveTo(900, 480, 720, 420, 560, 460);   // 新疆准噶尔/天山北坡
-  ctx.bezierCurveTo(460, 520, 420, 640, 460, 760);   // 帕米尔高原/喀喇昆仑
-  ctx.bezierCurveTo(520, 840, 680, 940, 840, 1020);  // 青藏高原西南部/喜马拉雅
-  ctx.bezierCurveTo(1000, 1080, 1140, 1140, 1260, 1200); // 云南滇池/横断山脉
-  ctx.bezierCurveTo(1340, 1260, 1460, 1340, 1560, 1380); // 广西十万大山/北部湾
-  ctx.bezierCurveTo(1640, 1400, 1720, 1360, 1800, 1320); // 广东雷州半岛/珠江口
-  ctx.bezierCurveTo(1880, 1260, 1940, 1180, 1960, 1080); // 福建武夷山/台湾海峡
-  ctx.bezierCurveTo(1980, 980, 1940, 880, 1880, 820);   // 浙江舟山/长江口
-  ctx.bezierCurveTo(1840, 780, 1800, 760, 1780, 720);   // 山东半岛/渤海湾
+  ctx.bezierCurveTo(1850, 620, 1920, 520, 1960, 420); // 东北大兴安岭/长白山
+  ctx.bezierCurveTo(1990, 320, 1900, 240, 1800, 220); // 漠河北极村
+  ctx.bezierCurveTo(1680, 240, 1600, 320, 1520, 380); // 内蒙古高原
+  ctx.bezierCurveTo(1380, 420, 1260, 460, 1100, 480); // 阴山阿尔泰
+  ctx.bezierCurveTo(900, 480, 720, 420, 560, 460);   // 新疆准噶尔
+  ctx.bezierCurveTo(460, 520, 420, 640, 460, 760);   // 帕米尔高原
+  ctx.bezierCurveTo(520, 840, 680, 940, 840, 1020);  // 青藏高原西南部
+  ctx.bezierCurveTo(1000, 1080, 1140, 1140, 1260, 1200); // 云贵高原
+  ctx.bezierCurveTo(1340, 1260, 1460, 1340, 1560, 1380); // 广西十万大山
+  ctx.bezierCurveTo(1640, 1400, 1720, 1360, 1800, 1320); // 广东珠江口
+  ctx.bezierCurveTo(1880, 1260, 1940, 1180, 1960, 1080); // 福建海峡
+  ctx.bezierCurveTo(1980, 980, 1940, 880, 1880, 820);   // 浙江/长江入海口
+  ctx.bezierCurveTo(1840, 780, 1800, 760, 1780, 720);   // 山东半岛
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  // 2. 绘制台湾岛与海南岛
+  // 台湾与海南
   ctx.beginPath();
-  ctx.ellipse(2040, 1200, 30, 75, Math.PI / 8, 0, Math.PI * 2); // 台湾岛
+  ctx.ellipse(2040, 1200, 30, 75, Math.PI / 8, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.ellipse(1620, 1460, 45, 30, -Math.PI / 10, 0, Math.PI * 2); // 海南岛
+  ctx.ellipse(1620, 1460, 45, 30, -Math.PI / 10, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  // 3. 绘制长江与黄河大动脉 (水蓝波纹线条)
+  // 2. 长江水系 (长江、湘江、洞庭湖水系)
   ctx.strokeStyle = 'rgba(37, 99, 235, 0.65)';
   ctx.lineWidth = 3;
-  // 长江巨脉 (自青藏高原发源，流经横断、巴蜀、湘鄂、江南入海)
   ctx.beginPath();
   ctx.moveTo(820, 920);
-  ctx.bezierCurveTo(1060, 960, 1220, 1040, 1380, 980); // 金沙江/三峡
-  ctx.bezierCurveTo(1500, 940, 1620, 1020, 1760, 960); // 洞庭湖/武汉
-  ctx.bezierCurveTo(1840, 920, 1880, 900, 1940, 890); // 南京/上海入海口
+  ctx.bezierCurveTo(1060, 960, 1220, 1040, 1380, 980);
+  ctx.bezierCurveTo(1500, 940, 1620, 1020, 1760, 960);
+  ctx.bezierCurveTo(1840, 920, 1880, 900, 1940, 890);
   ctx.stroke();
 
-  // 黄河巨脉 (几字大弯)
+  // 湘江支流 (洞庭湖连接长沙与郴州)
+  ctx.strokeStyle = 'rgba(14, 165, 233, 0.7)';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(1640, 1010); // 洞庭湖
+  ctx.lineTo(1640, 1120); // 长沙
+  ctx.lineTo(1620, 1240); // 郴州
+  ctx.stroke();
+
+  // 黄河水系
   ctx.strokeStyle = 'rgba(217, 119, 6, 0.6)';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(780, 800);
-  ctx.bezierCurveTo(940, 760, 1120, 680, 1300, 640); // 兰州/河套
-  ctx.bezierCurveTo(1440, 620, 1480, 740, 1460, 820); // 晋陕大峡谷几字弯
-  ctx.bezierCurveTo(1560, 840, 1680, 800, 1780, 730); // 洛阳/渤海入海口
+  ctx.bezierCurveTo(940, 760, 1120, 680, 1300, 640);
+  ctx.bezierCurveTo(1440, 620, 1480, 740, 1460, 820);
+  ctx.bezierCurveTo(1560, 840, 1680, 800, 1780, 730);
   ctx.stroke();
 
-  // 4. 绘制中华各大名山山脉骨架 (古风山脊符号)
+  // 3. 华夏名山地理骨架 (纯自然地理标注)
   ctx.fillStyle = '#6b4f3b';
-  ctx.font = 'italic 16px "Microsoft YaHei", serif';
-  ctx.fillText('▲ 昆仑山脉 (万山之祖)', 680, 780);
-  ctx.fillText('▲ 秦岭终南山 (华夏龙脊)', 1320, 880);
-  ctx.fillText('▲ 南岭山脉 (莽山·骑田岭)', 1580, 1260);
-  ctx.fillText('▲ 长白山天池', 1880, 460);
-  ctx.fillText('▲ 巫山·三峡悬棺', 1420, 960);
-  ctx.fillText('▲ 横断山脉·藏东大峡谷', 1080, 1040);
+  ctx.font = 'italic 15px "Microsoft YaHei", serif';
+  ctx.fillText('▲ 昆仑山脉', 680, 780);
+  ctx.fillText('▲ 秦岭山脉', 1320, 880);
+  ctx.fillText('▲ 南岭山脉 (莽山·骑田岭)', 1570, 1280);
+  ctx.fillText('▲ 洞庭湖水系', 1650, 1010);
   ctx.restore();
 
-  // 5. 初始化小说关键剧情地标
+  // 4. 仅放置作者《走马楼笔记》本身的纯原创据点
   mapLandmarks.value = [
     {
       id: 'lm_changsha',
-      type: 'story_city',
+      type: 'story_base',
       name: '湖南长沙 · 走马楼巷',
       icon: '🏮',
       x: 1640,
@@ -559,66 +558,29 @@ function loadChinaMapPreset() {
     {
       id: 'lm_chenzhou',
       type: 'story_danger',
-      name: '湖南郴州 · 盲谷古楼',
+      name: '湖南郴州 · 莽山盲谷',
       icon: '💀',
       x: 1620,
       y: 1240,
-      lore: '第一卷主战场 · 712矿道/石脸虫/水龙骨/地下九层木楼'
-    },
-    {
-      id: 'lm_qinling',
-      type: 'story_mountain',
-      name: '陕西秦岭 · 盲修九锚',
-      icon: '🏔️',
-      x: 1360,
-      y: 860,
-      lore: '华夏地脉祖脊 · 终南山阴阳古道'
-    },
-    {
-      id: 'lm_changbai',
-      type: 'story_temple',
-      name: '吉林白山 · 云顶天宫',
-      icon: '⛩️',
-      x: 1900,
-      y: 440,
-      lore: '长白山天池雪线 · 青铜巨门'
-    },
-    {
-      id: 'lm_xisha',
-      type: 'story_sea',
-      name: '南海西沙 · 明代沉船',
-      icon: '⚓',
-      x: 1720,
-      y: 1560,
-      lore: '珊瑚螺旋 · 怒海海底古墓'
-    },
-    {
-      id: 'lm_geermu',
-      type: 'story_secret',
-      name: '青海格尔木 · 疗养院',
-      icon: '🗝️',
-      x: 880,
-      y: 780,
-      lore: '柴达木盆地边缘 · 秘密档案室'
+      lore: '第一卷主战场 · 712废弃矿井/地下九层木楼'
     }
   ];
 
-  // 6. 默认连接长沙到郴州的探险路线 (第一卷行进路线)
   mapRoutes.value = [
     {
       id: 'route_vol1',
-      x1: 1670,
-      y1: 1140,
-      x2: 1650,
-      y2: 1260,
-      label: '第一卷探险路线 (长沙 ➔ 郴州盲谷)'
+      x1: 1640,
+      y1: 1120,
+      x2: 1620,
+      y2: 1240,
+      label: '第一卷：长沙 ➔ 郴州矿区'
     }
   ];
 
   saveMapData();
 }
 
-// ================= 🌍 真实地球七大洲世界地图预设 =================
+// ================= 🌍 真实地球七大洲全景底图 =================
 function loadEarthMapPreset() {
   if (!ctx || !canvasRef.value) return;
   drawParchmentBackground();
@@ -629,16 +591,16 @@ function loadEarthMapPreset() {
   ctx.lineWidth = 3;
   ctx.lineJoin = 'round';
 
-  // 1. 亚洲 + 欧洲大陆 (欧亚板块)
+  // 1. 欧亚大陆
   ctx.beginPath();
   ctx.moveTo(1100, 680);
-  ctx.bezierCurveTo(1000, 520, 920, 400, 840, 360);   // 欧洲西欧/斯堪的纳维亚
-  ctx.bezierCurveTo(960, 280, 1200, 240, 1500, 220);  // 西伯利亚北部海岸
-  ctx.bezierCurveTo(1800, 220, 2000, 280, 2150, 360); // 白令海峡边缘
-  ctx.bezierCurveTo(2100, 500, 1950, 650, 1900, 750); // 东亚太平洋沿岸/日本海
-  ctx.bezierCurveTo(1850, 900, 1700, 1050, 1550, 1100);// 东南亚半岛/印尼群岛
-  ctx.bezierCurveTo(1400, 1050, 1300, 950, 1200, 850);// 印度半岛/阿拉伯海
-  ctx.bezierCurveTo(1150, 800, 1120, 750, 1100, 680); // 地中海东岸
+  ctx.bezierCurveTo(1000, 520, 920, 400, 840, 360);
+  ctx.bezierCurveTo(960, 280, 1200, 240, 1500, 220);
+  ctx.bezierCurveTo(1800, 220, 2000, 280, 2150, 360);
+  ctx.bezierCurveTo(2100, 500, 1950, 650, 1900, 750);
+  ctx.bezierCurveTo(1850, 900, 1700, 1050, 1550, 1100);
+  ctx.bezierCurveTo(1400, 1050, 1300, 950, 1200, 850);
+  ctx.bezierCurveTo(1150, 800, 1120, 750, 1100, 680);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
@@ -646,46 +608,46 @@ function loadEarthMapPreset() {
   // 2. 非洲大陆
   ctx.beginPath();
   ctx.moveTo(1050, 720);
-  ctx.bezierCurveTo(1140, 740, 1200, 850, 1220, 980); // 红海/东非之角
-  ctx.bezierCurveTo(1200, 1150, 1120, 1350, 1050, 1420);// 好望角南端
-  ctx.bezierCurveTo(960, 1350, 900, 1100, 880, 950);   // 几内亚湾
-  ctx.bezierCurveTo(860, 850, 920, 760, 1050, 720);   // 直布罗陀/北非海岸
+  ctx.bezierCurveTo(1140, 740, 1200, 850, 1220, 980);
+  ctx.bezierCurveTo(1200, 1150, 1120, 1350, 1050, 1420);
+  ctx.bezierCurveTo(960, 1350, 900, 1100, 880, 950);
+  ctx.bezierCurveTo(860, 850, 920, 760, 1050, 720);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  // 3. 北美洲大陆
+  // 3. 北美洲
   ctx.beginPath();
   ctx.moveTo(560, 320);
-  ctx.bezierCurveTo(680, 260, 780, 340, 720, 480);   // 格陵兰/加拿大北部
-  ctx.bezierCurveTo(680, 600, 640, 750, 580, 880);   // 佛罗里达/墨西哥湾
-  ctx.bezierCurveTo(520, 980, 460, 1050, 420, 1080); // 中美洲峡地
-  ctx.bezierCurveTo(360, 950, 320, 750, 340, 580);   // 加利福尼亚太平洋沿岸
-  ctx.bezierCurveTo(360, 450, 440, 360, 560, 320);   // 阿拉斯加半岛
+  ctx.bezierCurveTo(680, 260, 780, 340, 720, 480);
+  ctx.bezierCurveTo(680, 600, 640, 750, 580, 880);
+  ctx.bezierCurveTo(520, 980, 460, 1050, 420, 1080);
+  ctx.bezierCurveTo(360, 950, 320, 750, 340, 580);
+  ctx.bezierCurveTo(360, 450, 440, 360, 560, 320);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  // 4. 南美洲大陆
+  // 4. 南美洲
   ctx.beginPath();
   ctx.moveTo(540, 1100);
-  ctx.bezierCurveTo(640, 1150, 720, 1250, 700, 1380); // 巴西高原东北角
-  ctx.bezierCurveTo(660, 1500, 580, 1680, 520, 1750); // 阿根廷合恩角南端
-  ctx.bezierCurveTo(460, 1650, 440, 1400, 450, 1250); // 智利安第斯山脉
+  ctx.bezierCurveTo(640, 1150, 720, 1250, 700, 1380);
+  ctx.bezierCurveTo(660, 1500, 580, 1680, 520, 1750);
+  ctx.bezierCurveTo(460, 1650, 440, 1400, 450, 1250);
   ctx.bezierCurveTo(460, 1180, 500, 1120, 540, 1100);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  // 5. 大洋洲 (澳洲大陆)
+  // 5. 大洋洲
   ctx.beginPath();
   ctx.ellipse(1950, 1350, 160, 110, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  // 大洋与大洲古典花体字标注
+  // 大洲与大洋纯自然地理标注
   ctx.fillStyle = '#6b4f3b';
-  ctx.font = 'bold 24px "Microsoft YaHei", serif';
+  ctx.font = 'bold 22px "Microsoft YaHei", serif';
   ctx.fillText('亚 洲 (ASIA)', 1580, 620);
   ctx.fillText('欧 洲 (EUROPE)', 960, 520);
   ctx.fillText('非 洲 (AFRICA)', 1020, 1060);
@@ -694,7 +656,7 @@ function loadEarthMapPreset() {
   ctx.fillText('大 洋 洲 (OCEANIA)', 1920, 1360);
 
   ctx.fillStyle = 'rgba(30, 64, 175, 0.45)';
-  ctx.font = 'italic 20px serif';
+  ctx.font = 'italic 18px serif';
   ctx.fillText('~ 太 平 洋 (PACIFIC OCEAN) ~', 2200, 950);
   ctx.fillText('~ 大 西 洋 (ATLANTIC OCEAN) ~', 760, 1050);
   ctx.fillText('~ 印 度 洋 (INDIAN OCEAN) ~', 1450, 1280);
@@ -702,31 +664,13 @@ function loadEarthMapPreset() {
 
   mapLandmarks.value = [
     {
-      id: 'lm_global_china',
-      type: 'story_city',
-      name: '中国 · 长沙楚风编辑部',
+      id: 'lm_global_changsha',
+      type: 'story_base',
+      name: '中国 · 长沙走马楼工作室',
       icon: '🏮',
       x: 1720,
       y: 720,
-      lore: '东亚核心剧情起点'
-    },
-    {
-      id: 'lm_global_pyramid',
-      type: 'story_temple',
-      name: '埃及 · 金字塔地下祭坛',
-      icon: '🏛️',
-      x: 1140,
-      y: 740,
-      lore: '世界古代神秘遗迹'
-    },
-    {
-      id: 'lm_global_bermuda',
-      type: 'story_danger',
-      name: '百慕大三角 · 魔鬼海域',
-      icon: '💀',
-      x: 680,
-      y: 780,
-      lore: '空间磁场紊乱禁区'
+      lore: '故事始发点'
     }
   ];
 
@@ -759,7 +703,7 @@ function clearCanvas(clearData = true) {
   saveMapData();
 }
 
-// 漫游拖拽状态
+// 漫游拖拽
 const isRightPanning = ref(false);
 let isPanning = false;
 let startPanX = 0;
@@ -769,7 +713,6 @@ function onMouseDown(e: MouseEvent) {
   const rect = mapWrapperRef.value?.getBoundingClientRect();
   if (!rect || !ctx || !canvasRef.value) return;
 
-  // 1. 鼠标右键 (按住右键自由漫游拖拽画布)
   if (e.button === 2) {
     isRightPanning.value = true;
     startPanX = e.clientX - panX.value;
@@ -777,7 +720,6 @@ function onMouseDown(e: MouseEvent) {
     return;
   }
 
-  // 2. 鼠标左键
   if (e.button !== 0) return;
 
   const logicalX = (e.clientX - rect.left - panX.value) / zoomLevel.value;
@@ -821,7 +763,7 @@ function onMouseDown(e: MouseEvent) {
       icon: stamp.icon,
       x: Math.round(logicalX - 30),
       y: Math.round(logicalY - 20),
-      lore: '点击双击编辑剧情地名与备注'
+      lore: '点击双击编辑剧情地名与设定'
     };
     mapLandmarks.value.push(newLm);
     saveMapData();
@@ -842,7 +784,7 @@ function onMouseDown(e: MouseEvent) {
         y1: tempRoute.value.y1,
         x2: logicalX,
         y2: logicalY,
-        label: '探险行进路线'
+        label: '剧情行进路线'
       });
       isDrawingRoute.value = false;
       tempRoute.value = null;
@@ -947,7 +889,12 @@ function loadMapData() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed.preset) currentMapPreset.value = parsed.preset;
-      if (parsed.landmarks) mapLandmarks.value = parsed.landmarks;
+      if (parsed.landmarks) {
+        // 过滤掉任何非原创地标
+        mapLandmarks.value = parsed.landmarks.filter((l: any) => 
+          !['云顶天宫', '疗养院', '明代沉船', '金字塔', '百慕大'].some(k => l.name?.includes(k))
+        );
+      }
       if (parsed.routes) mapRoutes.value = parsed.routes;
       if (parsed.drawingDataUrl) {
         const img = new Image();
@@ -960,7 +907,6 @@ function loadMapData() {
     }
   } catch (e) {}
 
-  // 无存储记录时默认载入中国探险全图
   loadChinaMapPreset();
 }
 
@@ -972,10 +918,8 @@ function exportMapImage() {
   const tCtx = tempCanvas.getContext('2d');
   if (!tCtx) return;
 
-  // 1. 绘制底层底图
   tCtx.drawImage(canvasRef.value, 0, 0);
 
-  // 2. 绘制路线
   tCtx.strokeStyle = '#dc2626';
   tCtx.lineWidth = 3.5;
   tCtx.setLineDash([8, 6]);
@@ -986,7 +930,6 @@ function exportMapImage() {
     tCtx.stroke();
   });
 
-  // 3. 绘制地标
   mapLandmarks.value.forEach(lm => {
     tCtx.font = 'bold 20px "Microsoft YaHei", sans-serif';
     tCtx.textAlign = 'center';
@@ -995,7 +938,7 @@ function exportMapImage() {
   });
 
   const a = document.createElement('a');
-  a.download = `世界观设定地图_${Date.now()}.png`;
+  a.download = `走马楼笔记_原创剧情地图_${Date.now()}.png`;
   a.href = tempCanvas.toDataURL('image/png');
   a.click();
 }
@@ -1013,7 +956,6 @@ function exportMapImage() {
   user-select: none;
 }
 
-/* 顶部工具栏 */
 .worldmap-toolbar {
   height: 52px;
   background: #1f1a14;
@@ -1110,7 +1052,6 @@ function exportMapImage() {
   background: #047857;
 }
 
-/* 颜色选择器 */
 .color-picker-row {
   display: flex;
   align-items: center;
@@ -1140,7 +1081,6 @@ function exportMapImage() {
   font-size: 11px;
 }
 
-/* 印章选择 */
 .stamp-select-btn {
   padding: 3px 8px;
   background: #2a231b;
@@ -1165,7 +1105,6 @@ function exportMapImage() {
   margin-left: auto;
 }
 
-/* 视口与画布 */
 .worldmap-viewport {
   flex: 1;
   position: relative;
@@ -1224,7 +1163,6 @@ function exportMapImage() {
   stroke-width: 4px;
 }
 
-/* 地标层 */
 .map-landmarks-layer {
   position: absolute;
   inset: 0;
@@ -1316,7 +1254,6 @@ function exportMapImage() {
   display: flex;
 }
 
-/* 浮动控件 */
 .map-floating-zoom {
   position: absolute;
   right: 20px;
