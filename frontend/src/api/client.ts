@@ -775,7 +775,37 @@ export const novelApi = {
     const books = getLocalBooks();
     const existingIdx = books.findIndex(b => b.id === bookId || b.tomatoBookId === String(tomatoBookData.book_id));
     if (existingIdx !== -1) {
-      books[existingIdx] = mcpBook;
+      const existingBook = books[existingIdx];
+      // 🌟 核心保护：智能增量合并，绝对不覆盖/丢弃本地新建但未发布的草稿章节！
+      const localChapters = (existingBook.volumes || []).flatMap(v => v.chapters || []);
+      const cloudTitles = new Set(convertedChapters.map(c => c.title.trim()));
+      const cloudTomatoIds = new Set(convertedChapters.map(c => c.tomatoChapterId));
+
+      // 提取本地独有的未发布草稿章节
+      const localOnlyDrafts = localChapters.filter(c => {
+        return !cloudTitles.has(c.title.trim()) && (!c.tomatoChapterId || !cloudTomatoIds.has(c.tomatoChapterId));
+      });
+
+      // 完美合并：云端线上章节 + 本地创作中的草稿章节
+      const mergedChapters = [...convertedChapters, ...localOnlyDrafts];
+      const mergedTotalWords = mergedChapters.reduce((sum, c) => sum + (c.wordCount || 0), 0);
+
+      existingBook.totalWordCount = mergedTotalWords;
+      if (!existingBook.volumes || existingBook.volumes.length === 0) {
+        existingBook.volumes = [{
+          id: volId,
+          bookId: existingBook.id,
+          title: '第一卷：默认分卷',
+          orderIndex: 1,
+          wordCount: mergedTotalWords,
+          collapsed: false,
+          chapters: mergedChapters
+        }];
+      } else {
+        existingBook.volumes[0].chapters = mergedChapters;
+        existingBook.volumes[0].wordCount = mergedTotalWords;
+      }
+      books[existingIdx] = existingBook;
     } else {
       books.unshift(mcpBook);
     }
