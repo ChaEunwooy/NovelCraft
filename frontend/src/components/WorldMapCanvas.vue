@@ -1,38 +1,14 @@
 <template>
   <div class="worldmap-container">
-    <!-- 地图专业工具栏 -->
+    <!-- 地图专业画板工具栏 -->
     <div class="worldmap-toolbar">
-      <!-- 模式切换 -->
+      <!-- 基础绘图与交互工具 -->
       <div class="tool-group">
-        <button
-          class="map-tool-btn"
-          :class="{ active: currentTool === 'pan' }"
-          @click="currentTool = 'pan'"
-          title="漫游视角 (按住左键/右键拖拽地图)"
-        >
-          ✋ 漫游
-        </button>
-        <button
-          class="map-tool-btn"
-          :class="{ active: currentTool === 'stamp' }"
-          @click="currentTool = 'stamp'"
-          title="放置地标 (在地球任意经纬度点击打下剧情坐标)"
-        >
-          📍 新建地标
-        </button>
-        <button
-          class="map-tool-btn"
-          :class="{ active: currentTool === 'route' }"
-          @click="currentTool = 'route'"
-          title="绘制路线 (点击两点绘制连线)"
-        >
-          🚩 探险路线
-        </button>
         <button
           class="map-tool-btn"
           :class="{ active: currentTool === 'brush' }"
           @click="currentTool = 'brush'"
-          title="手绘笔刷 (在地图上手绘标记/圈定势力)"
+          title="画笔工具 (在画布上手绘地图、山脉、河流、势力)"
         >
           🖌️ 笔刷
         </button>
@@ -44,24 +20,33 @@
         >
           🧹 橡皮
         </button>
-      </div>
-
-      <!-- 地标类型快速切换 -->
-      <div v-if="currentTool === 'stamp'" class="tool-group tool-sub">
         <button
-          v-for="st in stampList"
-          :key="st.type"
-          class="stamp-select-btn"
-          :class="{ active: selectedStampType === st.type }"
-          @click="selectedStampType = st.type"
-          :title="st.name"
+          class="map-tool-btn"
+          :class="{ active: currentTool === 'stamp' }"
+          @click="currentTool = 'stamp'"
+          title="放置地标 (点击画板任意位置打上剧情地标)"
         >
-          <span>{{ st.icon }}</span>
-          <span>{{ st.name }}</span>
+          📍 放置地标
+        </button>
+        <button
+          class="map-tool-btn"
+          :class="{ active: currentTool === 'route' }"
+          @click="currentTool = 'route'"
+          title="绘制路线 (点击起点和终点连线)"
+        >
+          🚩 绘制路线
+        </button>
+        <button
+          class="map-tool-btn"
+          :class="{ active: currentTool === 'pan' }"
+          @click="currentTool = 'pan'"
+          title="漫游视角 (按住拖拽移动画板)"
+        >
+          ✋ 漫游
         </button>
       </div>
 
-      <!-- 笔刷颜色与粗细 -->
+      <!-- 笔刷调色盘与粗细 -->
       <div v-if="currentTool === 'brush'" class="tool-group tool-sub">
         <div class="color-picker-row">
           <button
@@ -76,21 +61,36 @@
         <select v-model.number="brushWidth" class="tool-select">
           <option :value="2">细线 2px</option>
           <option :value="4">标准 4px</option>
-          <option :value="8">粗线 8px</option>
+          <option :value="8">粗轮廓 8px</option>
           <option :value="16">宽带 16px</option>
+          <option :value="32">涂抹 32px</option>
         </select>
+      </div>
+
+      <!-- 地标类型切换 -->
+      <div v-if="currentTool === 'stamp'" class="tool-group tool-sub">
+        <button
+          v-for="st in stampList"
+          :key="st.type"
+          class="stamp-select-btn"
+          :class="{ active: selectedStampType === st.type }"
+          @click="selectedStampType = st.type"
+          :title="st.name"
+        >
+          <span>{{ st.icon }}</span>
+          <span>{{ st.name }}</span>
+        </button>
       </div>
 
       <!-- 画布操作组 -->
       <div class="tool-group map-actions-right">
-        <button class="map-tool-btn" @click="undo" :disabled="historyStack.length === 0" title="撤销上一步绘制">↩️ 撤销</button>
-        <button class="map-tool-btn" @click="redrawEarth" title="重绘真实地球底图">🌍 刷新底图</button>
-        <button class="map-tool-btn" @click="clearAllData" title="清空所有地标与路线">🗑️ 清空标记</button>
-        <button class="map-tool-btn highlight" @click="exportMapImage" title="导出超高清世界地图图片">💾 导出地图</button>
+        <button class="map-tool-btn" @click="undo" :disabled="historyStack.length === 0" title="撤销上一步">↩️ 撤销</button>
+        <button class="map-tool-btn danger" @click="clearAll" title="清空整个画板">🗑️ 清空画板</button>
+        <button class="map-tool-btn highlight" @click="exportMapImage" title="导出高清地图图片">💾 导出地图</button>
       </div>
     </div>
 
-    <!-- 地图画布视口 (左键/右键漫游 + 滚轮缩放) -->
+    <!-- 地图画布视口 (支持手绘、自由拖拽地标、右键漫游与滚轮缩放) -->
     <div
       ref="mapWrapperRef"
       class="worldmap-viewport"
@@ -103,15 +103,15 @@
         class="worldmap-pan-layer"
         :style="{ transform: `translate(${panX}px, ${panY}px) scale(${zoomLevel})` }"
       >
-        <!-- 真实地球高精度 Canvas (3200 x 1600 像素，标准 2:1 等经纬度投影) -->
+        <!-- 纯净复古羊皮纸手绘 Canvas (2800 x 1800 像素) -->
         <canvas
           ref="canvasRef"
-          width="3200"
-          height="1600"
+          width="2800"
+          height="1800"
           class="map-drawing-canvas"
         ></canvas>
 
-        <!-- 上层路线 SVG 层 -->
+        <!-- 上层路线 SVG 交互层 -->
         <svg class="map-svg-layer">
           <g v-for="route in mapRoutes" :key="route.id">
             <line
@@ -139,7 +139,7 @@
           />
         </svg>
 
-        <!-- 地标图元 DOM 层 (支持自由拖拽与原地双击改名) -->
+        <!-- 地标图元 DOM 层 (支持自由拖拽与双击就地改名) -->
         <div class="map-landmarks-layer">
           <div
             v-for="lm in mapLandmarks"
@@ -169,7 +169,6 @@
             />
             <div v-else class="landmark-badge">
               <span class="landmark-name">{{ lm.name }}</span>
-              <span v-if="lm.lore" class="landmark-lore-hint">{{ lm.lore }}</span>
             </div>
             <button class="landmark-del-btn" @click.stop="deleteLandmark(lm)" title="删除此地标">✕</button>
           </div>
@@ -178,14 +177,13 @@
 
       <!-- 悬浮缩放与导航控制器 -->
       <div class="map-floating-zoom">
-        <button class="zoom-btn" @click="zoom(1.18)" title="放大">+</button>
-        <button class="zoom-btn" @click="zoom(0.82)" title="缩小">-</button>
-        <button class="zoom-btn reset" @click="resetView" title="重置视角">🎯</button>
+        <button class="zoom-btn" @click="zoom(1.15)" title="放大">+</button>
+        <button class="zoom-btn" @click="zoom(0.85)" title="缩小">-</button>
+        <button class="zoom-btn reset" @click="resetView" title="重置居中">🎯</button>
       </div>
 
-      <!-- 底部实时经纬度与操作提示 -->
       <div class="map-hint">
-        🌍 真实地球地理坐标系统 | 当前光标: {{ mouseCoordsText }} | 点击【新建地标】在地球任意位置放置剧情坐标 (双击改名)
+        🖌️ 纯净手绘画板 | 鼠标左键绘制/放置地标（双击改名，支持拖拽） | 按住右键漫游 | 滚轮缩放
       </div>
     </div>
   </div>
@@ -193,28 +191,35 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
-import { worldGeoData } from '../assets/worldGeoData';
-import { chinaGeoData } from '../assets/chinaGeoData';
 
 const props = defineProps<{
   bookId?: string;
 }>();
 
-const currentTool = ref<'pan' | 'stamp' | 'route' | 'brush' | 'eraser'>('pan');
-const brushColor = ref('#8b4513');
+const currentTool = ref<'brush' | 'eraser' | 'stamp' | 'route' | 'pan'>('brush');
+const brushColor = ref('#2b2416');
 const brushWidth = ref(4);
 
-const brushColors = ['#8b4513', '#2b2416', '#dc2626', '#1e40af', '#065f46', '#7c3aed', '#d97706'];
+const brushColors = [
+  '#2b2416', // 墨黑
+  '#8b4513', // 棕褐
+  '#dc2626', // 绯红
+  '#1e40af', // 藏蓝
+  '#065f46', // 苍翠
+  '#d97706', // 琥珀
+  '#7c3aed', // 紫罗兰
+  '#64748b'  // 青灰
+];
 
 const selectedStampType = ref('story_point');
 const stampList = [
   { type: 'story_point', name: '剧情节点', icon: '📍' },
-  { type: 'story_base', name: '主角据点', icon: '🏮' },
-  { type: 'story_danger', name: '秘境古迹', icon: '💀' },
+  { type: 'story_base', name: '主要据点', icon: '🏮' },
+  { type: 'story_danger', name: '危险秘境', icon: '💀' },
   { type: 'story_mountain', name: '名山祖脉', icon: '🏔️' },
   { type: 'story_water', name: '水系暗河', icon: '🌊' },
-  { type: 'story_secret', name: '地底暗室', icon: '🗝️' },
-  { type: 'story_city', name: '重要城市', icon: '🏙️' }
+  { type: 'story_secret', name: '地底暗道', icon: '🗝️' },
+  { type: 'story_city', name: '城镇城池', icon: '🏙️' }
 ];
 
 interface Landmark {
@@ -224,7 +229,6 @@ interface Landmark {
   icon: string;
   x: number;
   y: number;
-  lore?: string;
 }
 
 interface MapRoute {
@@ -239,12 +243,11 @@ interface MapRoute {
 const mapLandmarks = ref<Landmark[]>([]);
 const mapRoutes = ref<MapRoute[]>([]);
 const selectedLandmarkId = ref('');
-const mouseCoordsText = ref('东经 112.9° 北纬 28.2° (中国·长沙)');
 
-// 视口与缩放 (默认聚焦中国与东亚区域)
-const panX = ref(-700);
-const panY = ref(-250);
-const zoomLevel = ref(0.7);
+// 视口与缩放
+const panX = ref(40);
+const panY = ref(40);
+const zoomLevel = ref(0.65);
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const mapWrapperRef = ref<HTMLDivElement | null>(null);
@@ -313,7 +316,7 @@ const tempRoute = ref<{ x1: number; y1: number; x2: number; y2: number } | null>
 onMounted(() => {
   if (canvasRef.value) {
     ctx = canvasRef.value.getContext('2d', { willReadFrequently: true });
-    redrawEarth();
+    initCleanCanvasBackground();
     loadMapData();
   }
   window.addEventListener('mousemove', onGlobalMouseMove);
@@ -329,173 +332,39 @@ watch(() => props.bookId, () => {
   loadMapData();
 });
 
-// ==================== 🌍 真实地球高精度等经纬度渲染 ====================
-
-function projectLonLat(lon: number, lat: number, width: number, height: number): [number, number] {
-  const x = ((lon + 180.0) / 360.0) * width;
-  const y = ((90.0 - lat) / 180.0) * height;
-  return [x, y];
-}
-
-function redrawEarth() {
+// 初始化纯净羊皮纸方格底色
+function initCleanCanvasBackground() {
   if (!ctx || !canvasRef.value) return;
   const w = canvasRef.value.width;
   const h = canvasRef.value.height;
 
-  // 1. 真实地球海洋底色 (古典复古羊皮水域色)
-  ctx.fillStyle = '#f4efe4';
+  // 1. 羊皮纸护眼暖底色
+  ctx.fillStyle = '#fcf8ec';
   ctx.fillRect(0, 0, w, h);
 
-  // 2. 真实经纬度网格度数线 (每30度一条标准虚线，赤道与本初子午线实线)
+  // 2. 绘制轻量复古方格网点线 (辅助手绘构图)
   ctx.save();
-  for (let lon = -180; lon <= 180; lon += 30) {
-    const [x] = projectLonLat(lon, 0, w, h);
+  ctx.strokeStyle = '#e8dec5';
+  ctx.lineWidth = 1;
+  const step = 50;
+  for (let x = 0; x < w; x += step) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, h);
-    ctx.strokeStyle = lon === 0 ? 'rgba(180, 83, 9, 0.45)' : 'rgba(180, 160, 130, 0.28)';
-    ctx.lineWidth = lon === 0 ? 1.5 : 1;
-    ctx.setLineDash(lon === 0 ? [] : [4, 6]);
     ctx.stroke();
   }
-
-  for (let lat = -90; lat <= 90; lat += 30) {
-    const [, y] = projectLonLat(0, lat, w, h);
+  for (let y = 0; y < h; y += step) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(w, y);
-    ctx.strokeStyle = lat === 0 ? 'rgba(180, 83, 9, 0.45)' : 'rgba(180, 160, 130, 0.28)';
-    ctx.lineWidth = lat === 0 ? 1.5 : 1;
-    ctx.setLineDash(lat === 0 ? [] : [4, 6]);
     ctx.stroke();
   }
-  ctx.restore();
-
-  // 3. 渲染真实地球 177 个国家与大洲高精度多边形边界
-  ctx.save();
-  ctx.fillStyle = '#dfd2bc'; // 陆地柔和大地色
-  ctx.strokeStyle = '#7c5a38'; // 真实海岸线深褐色
-  ctx.lineWidth = 1.2;
-  ctx.lineJoin = 'round';
-
-  const renderPolygon = (coords: any[]) => {
-    if (!ctx) return;
-    ctx.beginPath();
-    for (let i = 0; i < coords.length; i++) {
-      const ring = coords[i];
-      if (!Array.isArray(ring) || ring.length === 0) continue;
-      const first = projectLonLat(ring[0][0], ring[0][1], w, h);
-      ctx.moveTo(first[0], first[1]);
-      for (let j = 1; j < ring.length; j++) {
-        const pt = projectLonLat(ring[j][0], ring[j][1], w, h);
-        ctx.lineTo(pt[0], pt[1]);
-      }
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  };
-
-  const features = (worldGeoData as any)?.features || [];
-  for (const feat of features) {
-    const geom = feat?.geometry;
-    if (!geom) continue;
-    if (geom.type === 'Polygon') {
-      renderPolygon(geom.coordinates);
-    } else if (geom.type === 'MultiPolygon') {
-      for (const poly of geom.coordinates) {
-        renderPolygon(poly);
-      }
-    }
-  }
-
-  // 4. 高亮真实中国各省份精细边界
-  ctx.fillStyle = '#eddcc4';
-  ctx.strokeStyle = '#a27b52';
-  ctx.lineWidth = 0.8;
-  const chinaFeatures = (chinaGeoData as any)?.features || [];
-  for (const feat of chinaFeatures) {
-    const geom = feat?.geometry;
-    if (!geom) continue;
-    if (geom.type === 'Polygon') {
-      renderPolygon(geom.coordinates);
-    } else if (geom.type === 'MultiPolygon') {
-      for (const poly of geom.coordinates) {
-        renderPolygon(poly);
-      }
-    }
-  }
-
-  // 5. 大洋真实地理标注
-  ctx.fillStyle = 'rgba(30, 64, 175, 0.4)';
-  ctx.font = 'italic 20px "Microsoft YaHei", serif';
-  ctx.textAlign = 'center';
-  const [pacX, pacY] = projectLonLat(160, -10, w, h);
-  ctx.fillText('~ 太 平 洋 (PACIFIC OCEAN) ~', pacX, pacY);
-
-  const [atlX, atlY] = projectLonLat(-35, 20, w, h);
-  ctx.fillText('~ 大 西 洋 (ATLANTIC OCEAN) ~', atlX, atlY);
-
-  const [indX, indY] = projectLonLat(80, -20, w, h);
-  ctx.fillText('~ 印 度 洋 (INDIAN OCEAN) ~', indX, indY);
-
-  const [arcX, arcY] = projectLonLat(0, 80, w, h);
-  ctx.fillText('~ 北 冰 洋 (ARCTIC OCEAN) ~', arcX, arcY);
-
-  // 6. 右下角古典指南针罗盘
-  drawCompassRose(w - 180, h - 180, 75);
-  ctx.restore();
-}
-
-function drawCompassRose(cx: number, cy: number, r: number) {
-  if (!ctx) return;
-  ctx.save();
-  ctx.strokeStyle = '#8b6f4e';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.stroke();
-
-  const angles = [0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2];
-  angles.forEach((a, i) => {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(a);
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(-r * 0.18, -r * 0.2);
-    ctx.lineTo(0, -r);
-    ctx.closePath();
-    ctx.fillStyle = i === 0 ? '#b91c1c' : '#5c4a38';
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(r * 0.18, -r * 0.2);
-    ctx.lineTo(0, -r);
-    ctx.closePath();
-    ctx.fillStyle = '#dfd3be';
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  });
-
-  ctx.font = 'bold 15px "Microsoft YaHei", serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#b91c1c';
-  ctx.fillText('北 (N)', cx, cy - r - 18);
-  ctx.fillStyle = '#5c4a38';
-  ctx.fillText('南 (S)', cx, cy + r + 18);
-  ctx.fillText('东 (E)', cx + r + 22, cy);
-  ctx.fillText('西 (W)', cx - r - 22, cy);
   ctx.restore();
 }
 
 function saveSnapshot() {
   if (!ctx || !canvasRef.value) return;
-  if (historyStack.value.length >= 10) historyStack.value.shift();
+  if (historyStack.value.length >= 15) historyStack.value.shift();
   historyStack.value.push(ctx.getImageData(0, 0, canvasRef.value.width, canvasRef.value.height));
 }
 
@@ -508,11 +377,11 @@ function undo() {
   }
 }
 
-function clearAllData() {
+function clearAll() {
+  initCleanCanvasBackground();
   mapLandmarks.value = [];
   mapRoutes.value = [];
   historyStack.value = [];
-  redrawEarth();
   saveMapData();
 }
 
@@ -556,7 +425,7 @@ function onMouseDown(e: MouseEvent) {
     ctx.lineJoin = 'round';
 
     if (currentTool.value === 'eraser') {
-      ctx.strokeStyle = '#f4efe4';
+      ctx.strokeStyle = '#fcf8ec';
       ctx.lineWidth = brushWidth.value * 3;
     } else {
       ctx.strokeStyle = brushColor.value;
@@ -575,8 +444,7 @@ function onMouseDown(e: MouseEvent) {
       name: stamp.name,
       icon: stamp.icon,
       x: Math.round(logicalX),
-      y: Math.round(logicalY),
-      lore: ''
+      y: Math.round(logicalY)
     };
     mapLandmarks.value.push(newLm);
     saveMapData();
@@ -597,7 +465,7 @@ function onMouseDown(e: MouseEvent) {
         y1: tempRoute.value.y1,
         x2: logicalX,
         y2: logicalY,
-        label: '剧情路线'
+        label: '路线'
       });
       isDrawingRoute.value = false;
       tempRoute.value = null;
@@ -607,15 +475,6 @@ function onMouseDown(e: MouseEvent) {
 }
 
 function onGlobalMouseMove(e: MouseEvent) {
-  const rect = mapWrapperRef.value?.getBoundingClientRect();
-  if (rect && canvasRef.value) {
-    const logicalX = (e.clientX - rect.left - panX.value) / zoomLevel.value;
-    const logicalY = (e.clientY - rect.top - panY.value) / zoomLevel.value;
-    const lon = ((logicalX / canvasRef.value.width) * 360.0 - 180.0).toFixed(1);
-    const lat = (90.0 - (logicalY / canvasRef.value.height) * 180.0).toFixed(1);
-    mouseCoordsText.value = `${Number(lon) >= 0 ? '东经 ' + lon : '西经 ' + Math.abs(Number(lon))}°  ${Number(lat) >= 0 ? '北纬 ' + lat : '南纬 ' + Math.abs(Number(lat))}°`;
-  }
-
   if (isRightPanning.value) {
     panX.value = e.clientX - startPanX;
     panY.value = e.clientY - startPanY;
@@ -623,6 +482,7 @@ function onGlobalMouseMove(e: MouseEvent) {
   }
 
   if (isDraggingLandmark && dragLandmark) {
+    const rect = mapWrapperRef.value?.getBoundingClientRect();
     if (!rect) return;
     const logicalX = (e.clientX - rect.left - panX.value) / zoomLevel.value;
     const logicalY = (e.clientY - rect.top - panY.value) / zoomLevel.value;
@@ -638,6 +498,7 @@ function onGlobalMouseMove(e: MouseEvent) {
   }
 
   if (isDrawing && ctx) {
+    const rect = mapWrapperRef.value?.getBoundingClientRect();
     if (!rect) return;
     const logicalX = (e.clientX - rect.left - panX.value) / zoomLevel.value;
     const logicalY = (e.clientY - rect.top - panY.value) / zoomLevel.value;
@@ -649,6 +510,7 @@ function onGlobalMouseMove(e: MouseEvent) {
   }
 
   if (isDrawingRoute.value && tempRoute.value) {
+    const rect = mapWrapperRef.value?.getBoundingClientRect();
     if (!rect) return;
     tempRoute.value.x2 = (e.clientX - rect.left - panX.value) / zoomLevel.value;
     tempRoute.value.y2 = (e.clientY - rect.top - panY.value) / zoomLevel.value;
@@ -681,9 +543,9 @@ function zoom(factor: number) {
 }
 
 function resetView() {
-  zoomLevel.value = 0.7;
-  panX.value = -700;
-  panY.value = -250;
+  zoomLevel.value = 0.65;
+  panX.value = 40;
+  panY.value = 40;
 }
 
 function saveMapData() {
@@ -701,6 +563,7 @@ function saveMapData() {
 
 function loadMapData() {
   if (!props.bookId || !ctx || !canvasRef.value) return;
+  initCleanCanvasBackground();
   try {
     const raw = localStorage.getItem(`NOVELCRAFT_WORLD_MAP_${props.bookId}`);
     if (raw) {
@@ -713,48 +576,9 @@ function loadMapData() {
           ctx?.drawImage(img, 0, 0);
         };
         img.src = parsed.drawingDataUrl;
-        return;
       }
     }
   } catch (e) {}
-
-  // 默认放置您唯一的原创真实坐标：湖南长沙与郴州
-  if (canvasRef.value) {
-    const [csX, csY] = projectLonLat(112.98, 28.19, canvasRef.value.width, canvasRef.value.height);
-    const [czX, czY] = projectLonLat(113.01, 25.77, canvasRef.value.width, canvasRef.value.height);
-
-    mapLandmarks.value = [
-      {
-        id: 'lm_changsha',
-        type: 'story_base',
-        name: '湖南长沙 · 走马楼巷',
-        icon: '🏮',
-        x: Math.round(csX),
-        y: Math.round(csY),
-        lore: '楚风文化工作室大本营'
-      },
-      {
-        id: 'lm_chenzhou',
-        type: 'story_danger',
-        name: '湖南郴州 · 莽山盲谷',
-        icon: '💀',
-        x: Math.round(czX),
-        y: Math.round(czY),
-        lore: '第一卷：712地下九层木楼'
-      }
-    ];
-
-    mapRoutes.value = [
-      {
-        id: 'route_vol1',
-        x1: Math.round(csX),
-        y1: Math.round(csY),
-        x2: Math.round(czX),
-        y2: Math.round(czY),
-        label: '第一卷行进路线'
-      }
-    ];
-  }
 }
 
 function exportMapImage() {
@@ -785,7 +609,7 @@ function exportMapImage() {
   });
 
   const a = document.createElement('a');
-  a.download = `走马楼笔记_真实地球剧情地图_${Date.now()}.png`;
+  a.download = `手绘世界观地图_${Date.now()}.png`;
   a.href = tempCanvas.toDataURL('image/png');
   a.click();
 }
@@ -860,6 +684,16 @@ function exportMapImage() {
 
 .map-tool-btn.highlight:hover {
   background: #047857;
+}
+
+.map-tool-btn.danger {
+  background: #7f1d1d;
+  border-color: #991b1b;
+  color: #fee2e2;
+}
+
+.map-tool-btn.danger:hover {
+  background: #991b1b;
 }
 
 .color-picker-row {
@@ -1024,12 +858,6 @@ function exportMapImage() {
   font-size: 12px;
   font-weight: 700;
   color: #fef3c7;
-}
-
-.landmark-lore-hint {
-  font-size: 10px;
-  color: #d1d5db;
-  margin-top: 1px;
 }
 
 .inline-landmark-input {
