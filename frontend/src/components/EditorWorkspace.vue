@@ -165,6 +165,14 @@ function handleMarkClue() {
 const localTitle = ref(props.chapter?.title || '');
 const localContent = ref(props.chapter?.content || '');
 const isEditorFocused = ref(false);
+const userReadingScrollTop = ref(0);
+
+function handleScroll(e: Event) {
+  const el = e.target as HTMLTextAreaElement;
+  if (el) {
+    userReadingScrollTop.value = el.scrollTop;
+  }
+}
 
 // 计时状态 (各章节完全独立)
 const typingSeconds = ref(0);
@@ -202,13 +210,23 @@ watch(
   (newId, oldId) => {
     const today = getTodayDateStr();
     // 1. 保存上一章的计时
-    if (oldId) {
+    if (oldId && oldId !== newId) {
       emit('update-metrics', typingSeconds.value, thinkingSeconds.value, today);
     }
-    // 2. 载入新章节的独立计时数据与正文 (跨天自动重置为0)
+
+    // 2. 只有真正切换到【不同章节】时才重置阅读滚动条；相同章节ID只更新数据，绝不破坏滚动条
+    const isDifferentChapter = newId !== oldId;
+    if (isDifferentChapter) {
+      userReadingScrollTop.value = 0;
+    }
+
     if (props.chapter) {
-      localTitle.value = props.chapter.title || '';
-      localContent.value = props.chapter.content || '';
+      if (localTitle.value !== props.chapter.title) {
+        localTitle.value = props.chapter.title || '';
+      }
+      if (localContent.value !== props.chapter.content) {
+        localContent.value = props.chapter.content || '';
+      }
       
       // 🌟 跨天自动重置：如果保存的记录不是今天，则自动清零重置为 0
       if (props.chapter.metricsDate && props.chapter.metricsDate !== today) {
@@ -232,6 +250,15 @@ watch(
     isCurrentlyTyping.value = false;
     lastKeystrokeTime = 0;
     recalculateSpeed();
+
+    // 如果是相同章节更新，保持阅读位置
+    if (!isDifferentChapter && userReadingScrollTop.value > 0) {
+      nextTick(() => {
+        if (textareaRef.value) {
+          textareaRef.value.scrollTop = userReadingScrollTop.value;
+        }
+      });
+    }
   },
   { immediate: true }
 );
@@ -241,15 +268,13 @@ watch(
   () => props.chapter?.content,
   (newVal) => {
     if (!isEditorFocused.value && newVal !== undefined && newVal !== localContent.value) {
-      const textarea = textareaRef.value;
-      const prevScrollTop = textarea ? textarea.scrollTop : 0;
-      
+      const targetScroll = userReadingScrollTop.value;
       localContent.value = newVal;
       
       // 🌟 核心防回弹：在 Vue DOM 更新完成后，完美复原用户的阅读滚动位置
       nextTick(() => {
-        if (textarea && prevScrollTop > 0) {
-          textarea.scrollTop = prevScrollTop;
+        if (textareaRef.value && targetScroll > 0) {
+          textareaRef.value.scrollTop = targetScroll;
         }
       });
     }

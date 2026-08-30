@@ -334,26 +334,23 @@ onMounted(async () => {
 
   await loadBooks();
 
-  // 🚀 硬盘物理文件安全热更新监听（仅在用户未输入时无感同步，绝不干扰正常打字）
+  // 🚀 硬盘物理文件安全热更新监听（仅在真正有文本变动时无感合并，绝不盲目替换整个books数组打断阅读）
   async function syncFromDiskSilently() {
     try {
-      // 若当前用户正在打字（焦点在输入框内），严禁覆盖用户的实时创作！
+      // 若当前用户正在打字或正文输入框存在焦点，严禁打断
       const activeTag = document.activeElement?.tagName;
       if (activeTag === 'TEXTAREA' || activeTag === 'INPUT') {
         return;
       }
 
-      const diskBooks = await novelApi.getBooks();
-      if (Array.isArray(diskBooks) && diskBooks.length > 0) {
-        books.value = diskBooks;
-        if (currentChapter.value && currentBook.value) {
-          const freshText = await novelApi.fetchChapterDiskContent(currentBook.value.id, currentChapter.value.id);
-          if (freshText !== null && freshText !== currentChapter.value.content) {
-            currentChapter.value.content = freshText;
-            currentChapter.value.wordCount = freshText.replace(/\s/g, '').length;
-            currentChapter.value.paragraphCount = freshText.split('\n').filter(p => p.trim().length > 0).length;
-            saveStatusText.value = '已与本地硬盘对齐';
-          }
+      if (currentChapter.value && currentBook.value) {
+        const freshText = await novelApi.fetchChapterDiskContent(currentBook.value.id, currentChapter.value.id);
+        // 只有磁盘上的文字与当前正文确实存在实际差异时，才做精准更新
+        if (freshText !== null && freshText !== currentChapter.value.content) {
+          currentChapter.value.content = freshText;
+          currentChapter.value.wordCount = freshText.replace(/\s/g, '').length;
+          currentChapter.value.paragraphCount = freshText.split('\n').filter(p => p.trim().length > 0).length;
+          saveStatusText.value = '已与本地硬盘对齐';
         }
       }
     } catch (e) {}
