@@ -905,7 +905,7 @@ export function localDiskStoragePlugin(): Plugin {
 
               return sendJson({
                 status: 'error',
-                errorType,
+                errorType: errType,
                 title: friendlyTitle,
                 message: friendlyMessage,
                 details: {
