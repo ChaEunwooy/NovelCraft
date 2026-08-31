@@ -22,9 +22,6 @@
           <span class="speed-text">⚡ {{ currentSpeed }} 字/时</span>
         </div>
 
-        <button class="editor-btn proofread-btn" @click="$emit('open-proofread')" title="启动本地毫秒级错别字与语病智能诊断 (MacBERT-Lite)">
-          <span>🔍 智能纠错</span>
-        </button>
         <button class="editor-btn" @click="handleFormat" title="一键标准缩进与中文标点规范化">
           <span>✨ 一键排版</span>
         </button>
@@ -124,8 +121,7 @@ const emit = defineEmits<{
   (e: 'push-tomato-draft'): void;
   (e: 'push-tomato-publish'): void;
   (e: 'format-text'): void;
-  (e: 'open-proofread'): void;
-  (e: 'mark-clue', payload: { quoteText: string; paragraphIndex: number }): void;
+(e: 'mark-clue', payload: { quoteText: string; paragraphIndex: number }): void;
 }>();
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
@@ -724,17 +720,5 @@ function handleFormat() {
 </style>
 
 <style scoped>
-
-.proofread-btn {
-  background: rgba(59, 130, 246, 0.08) !important;
-  color: #2563eb !important;
-  border-color: rgba(59, 130, 246, 0.3) !important;
-}
-
-.proofread-btn:hover {
-  background: #2563eb !important;
-  color: #ffffff !important;
-  border-color: #2563eb !important;
-}
 
 </style>

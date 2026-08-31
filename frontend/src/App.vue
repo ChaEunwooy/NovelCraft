@@ -55,7 +55,7 @@
           @push-tomato-draft="onPushTomatoDraft"
           @push-tomato-publish="onPushTomatoPublish"
           @format-text="onFormatText"
-        @open-proofread="onOpenProofread"
+        
           @mark-clue="onMarkClueFromEditor"
         />
       </section>
@@ -154,15 +154,7 @@
       @action="handleErrorAction"
     />
 
-        <!-- 智能文本纠错与病句诊断弹窗 (MacBERT-Lite) -->
-    <ProofreadModal
-      :is-open="isProofreadModalOpen"
-      :result="proofreadResult"
-      @close="isProofreadModalOpen = false"
-      @apply-fix="onApplyProofreadFix"
-      @apply-all-fixes="onApplyAllProofreadFixes"
-      @ignore-item="onIgnoreProofreadItem"
-    />
+        
 
     <!-- 独立物理快照与版本保险箱弹窗 -->
     <BackupSnapshotModal
@@ -197,8 +189,6 @@ import McpSyncModal from './components/McpSyncModal.vue';
 import CreateNovelModal from './components/CreateNovelModal.vue';
 import ErrorNoticeModal from './components/ErrorNoticeModal.vue';
 import BackupSnapshotModal from './components/BackupSnapshotModal.vue';
-import ProofreadModal from './components/ProofreadModal.vue';
-import { LocalProofreader, type ProofreadResult, type ProofreadItem } from './utils/proofreader';
 import StorageSettingsModal from './components/StorageSettingsModal.vue';
 import CharacterArchiveModal from './components/character/CharacterArchiveModal.vue';
 import ForeshadowKanbanModal from './components/foreshadow/ForeshadowKanbanModal.vue';
@@ -983,79 +973,6 @@ async function onUpdateMindMap(data: MindMapData) {
   }
 }
 
-// 智能纠错状态 (MacBERT-Lite)
-const isProofreadModalOpen = ref(false);
-const proofreadResult = ref<ProofreadResult>({
-  totalIssues: 0,
-  typoCount: 0,
-  grammarCount: 0,
-  punctuationCount: 0,
-  items: [],
-  checkedCharCount: 0,
-  costMs: 0
-});
-const customWhitelist = ref<string[]>(['走马楼', '石脸虫', '水龙骨', '地生骨花', '杨涛', '王胖子', '刘瘸子', '九层天坑', '盲谷']);
-
-function onOpenProofread() {
-  if (!currentChapter.value) {
-    showToast('请先打开或选择一个章节进行纠错诊断');
-    return;
-  }
-
-  // 提取本书主角名与设定词作为动态白名单
-  const dynamicWhitelist = [...customWhitelist.value];
-  if (currentBook.value) {
-    dynamicWhitelist.push(currentBook.value.title.replace(/[《》]/g, ''));
-    (currentBook.value.volumes || []).forEach(v => {
-      dynamicWhitelist.push(v.title);
-    });
-  }
-
-  // 纯本地毫秒级诊断分析
-  const result = LocalProofreader.analyze(currentChapter.value.content || '', dynamicWhitelist);
-  proofreadResult.value = result;
-  isProofreadModalOpen.value = true;
-}
-
-function onApplyProofreadFix(item: ProofreadItem) {
-  if (!currentChapter.value) return;
-  const content = currentChapter.value.content || '';
-  if (content.includes(item.originalText)) {
-    const updated = content.replace(item.originalText, item.suggestedText);
-    onUpdateChapter(currentChapter.value.title, updated);
-    
-    // 移除已处理项
-    proofreadResult.value.items = proofreadResult.value.items.filter(i => i.id !== item.id);
-    proofreadResult.value.totalIssues = proofreadResult.value.items.length;
-    showToast(`✓ 已采纳修改：【${item.originalText}】➔【${item.suggestedText}】`);
-  }
-}
-
-function onApplyAllProofreadFixes(items: ProofreadItem[]) {
-  if (!currentChapter.value || items.length === 0) return;
-  let content = currentChapter.value.content || '';
-  let count = 0;
-  
-  items.forEach(item => {
-    if (content.includes(item.originalText)) {
-      content = content.replace(item.originalText, item.suggestedText);
-      count++;
-    }
-  });
-
-  onUpdateChapter(currentChapter.value.title, content);
-  proofreadResult.value.items = [];
-  proofreadResult.value.totalIssues = 0;
-  showToast(`🎉 成功一键批量采纳并修复 ${count} 处错别字与语病！`);
-  isProofreadModalOpen.value = false;
-}
-
-function onIgnoreProofreadItem(item: ProofreadItem) {
-  customWhitelist.value.push(item.originalText);
-  proofreadResult.value.items = proofreadResult.value.items.filter(i => i.id !== item.id);
-  proofreadResult.value.totalIssues = proofreadResult.value.items.length;
-  showToast(`已忽略【${item.originalText}】并加入专属白名单`);
-}
 
 // 伏笔管理联动逻辑
 function onMarkClueFromEditor(payload: { quoteText: string; paragraphIndex: number }) {
