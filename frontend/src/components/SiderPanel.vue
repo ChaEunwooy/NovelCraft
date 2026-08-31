@@ -58,6 +58,7 @@
     <div class="sider-tabs">
       <div class="sider-tab-item active">章节目录</div>
       <div class="sider-tab-item" @click="$emit('open-character-modal')" title="打开人物卡仓库与人物逻辑梳理图">👥 人物世界观</div>
+      <div class="sider-tab-item nest-tab-item" @click="$emit('open-nest-drama')" title="启动 NEST-DRAMA 群像多智能体剧情推演沙盒">🌌 群像沙盒</div>
       <div class="sider-tab-item" @click="$emit('open-foreshadow-modal')" title="打开伏笔与暗线推演看板">🗝️ 伏笔看板</div>
     </div>
 
@@ -687,4 +688,13 @@ function getStatusTitle(status?: string): string {
   border-color: var(--border-color);
   color: var(--text-main);
 }
+
+.nest-tab-item {
+  color: #80d8ff !important;
+  border-color: #0091ea !important;
+}
+.nest-tab-item:hover {
+  background: rgba(0, 145, 234, 0.2) !important;
+}
+
 </style>

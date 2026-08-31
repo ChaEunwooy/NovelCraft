@@ -22,6 +22,9 @@
           <span class="speed-text">⚡ {{ currentSpeed }} 字/时</span>
         </div>
 
+        <button class="editor-btn dupian-btn" @click="isDupianOpen = true" title="启动 NEST-DRAMA 零 Token 去 AI 腔智能机检与一键无损脱水">
+          <span>🛡️ 毒编去AI</span>
+        </button>
         <button class="editor-btn proofread-btn" @click="$emit('open-proofread')" title="启动本地毫秒级错别字与语病智能诊断 (MacBERT-Lite)">
           <span>🔍 智能纠错</span>
         </button>
@@ -106,6 +109,13 @@
         <span>存储：本地毫秒落盘</span>
       </div>
     </footer>
+      <!-- 🛡️ NEST-DRAMA 毒编机检 · 零 Token 去 AI 腔智能诊断模态框 -->
+    <DupianInspectorModal
+      :is-open="isDupianOpen"
+      :content="localContent"
+      @close="isDupianOpen = false"
+      @apply-repaired="handleApplyRepaired"
+    />
   </div>
 </template>
 
@@ -696,6 +706,18 @@ function handleFormat() {
 .text-amber {
   color: #d97706;
 }
+
+.dupian-btn {
+  background: linear-gradient(135deg, #1b5e20, #004d40) !important;
+  color: #a7ffeb !important;
+  border-color: #00bfa5 !important;
+  font-weight: bold;
+}
+.dupian-btn:hover {
+  background: linear-gradient(135deg, #2e7d32, #00695c) !important;
+  box-shadow: 0 0 10px rgba(0, 191, 165, 0.6);
+}
+
 </style>
 
 <style scoped>
@@ -721,6 +743,18 @@ function handleFormat() {
   border-color: #ef4444;
 }
 
+
+.dupian-btn {
+  background: linear-gradient(135deg, #1b5e20, #004d40) !important;
+  color: #a7ffeb !important;
+  border-color: #00bfa5 !important;
+  font-weight: bold;
+}
+.dupian-btn:hover {
+  background: linear-gradient(135deg, #2e7d32, #00695c) !important;
+  box-shadow: 0 0 10px rgba(0, 191, 165, 0.6);
+}
+
 </style>
 
 <style scoped>
@@ -735,6 +769,18 @@ function handleFormat() {
   background: #2563eb !important;
   color: #ffffff !important;
   border-color: #2563eb !important;
+}
+
+
+.dupian-btn {
+  background: linear-gradient(135deg, #1b5e20, #004d40) !important;
+  color: #a7ffeb !important;
+  border-color: #00bfa5 !important;
+  font-weight: bold;
+}
+.dupian-btn:hover {
+  background: linear-gradient(135deg, #2e7d32, #00695c) !important;
+  box-shadow: 0 0 10px rgba(0, 191, 165, 0.6);
 }
 
 </style>
