@@ -2,96 +2,136 @@
   <div class="worldmap-container">
     <!-- 地图专业画板工具栏 -->
     <div class="worldmap-toolbar">
-      <!-- 基础绘图与交互工具 -->
-      <div class="tool-group">
+      <!-- 维度模式切换 (2D手绘 / 3D天体星系) -->
+      <div class="tool-group mode-toggle-group">
         <button
-          class="map-tool-btn"
-          :class="{ active: currentTool === 'brush' }"
-          @click="currentTool = 'brush'"
-          title="画笔工具 (在画布上手绘地图、山脉、河流、势力)"
+          class="map-tool-btn mode-btn"
+          :class="{ active: viewMode === '2d' }"
+          @click="switchViewMode('2d')"
+          title="切换至 2D 羊皮纸手绘自由画板"
         >
-          🖌️ 笔刷
+          🗺️ 2D 手绘地图
         </button>
         <button
-          class="map-tool-btn"
-          :class="{ active: currentTool === 'eraser' }"
-          @click="currentTool = 'eraser'"
-          title="橡皮擦"
+          class="map-tool-btn mode-btn galaxy-btn"
+          :class="{ active: viewMode === '3d' }"
+          @click="switchViewMode('3d')"
+          title="切换至 3D 华夏北斗天体星系图谱 (NEST-DRAMA 宇宙视角)"
         >
-          🧹 橡皮
-        </button>
-        <button
-          class="map-tool-btn"
-          :class="{ active: currentTool === 'stamp' }"
-          @click="currentTool = 'stamp'"
-          title="放置地标 (点击画板任意位置打上剧情地标)"
-        >
-          📍 放置地标
-        </button>
-        <button
-          class="map-tool-btn"
-          :class="{ active: currentTool === 'route' }"
-          @click="currentTool = 'route'"
-          title="绘制路线 (点击起点和终点连线)"
-        >
-          🚩 绘制路线
-        </button>
-        <button
-          class="map-tool-btn"
-          :class="{ active: currentTool === 'pan' }"
-          @click="currentTool = 'pan'"
-          title="漫游视角 (按住拖拽移动画板)"
-        >
-          ✋ 漫游
+          🌌 3D 北斗星系图
         </button>
       </div>
 
-      <!-- 笔刷调色盘与粗细 -->
-      <div v-if="currentTool === 'brush'" class="tool-group tool-sub">
-        <div class="color-picker-row">
+      <!-- 2D 专属绘图工具 -->
+      <template v-if="viewMode === '2d'">
+        <div class="tool-group">
           <button
-            v-for="c in brushColors"
-            :key="c"
-            class="color-dot"
-            :style="{ background: c }"
-            :class="{ active: brushColor === c }"
-            @click="brushColor = c"
-          ></button>
+            class="map-tool-btn"
+            :class="{ active: currentTool === 'brush' }"
+            @click="currentTool = 'brush'"
+            title="画笔工具 (在画布上手绘地图、山脉、河流)"
+          >
+            🖌️ 笔刷
+          </button>
+          <button
+            class="map-tool-btn"
+            :class="{ active: currentTool === 'eraser' }"
+            @click="currentTool = 'eraser'"
+            title="橡皮擦"
+          >
+            🧹 橡皮
+          </button>
+          <button
+            class="map-tool-btn"
+            :class="{ active: currentTool === 'stamp' }"
+            @click="currentTool = 'stamp'"
+            title="放置地标"
+          >
+            📍 放置地标
+          </button>
+          <button
+            class="map-tool-btn"
+            :class="{ active: currentTool === 'route' }"
+            @click="currentTool = 'route'"
+            title="绘制路线"
+          >
+            🚩 绘制路线
+          </button>
+          <button
+            class="map-tool-btn"
+            :class="{ active: currentTool === 'pan' }"
+            @click="currentTool = 'pan'"
+            title="漫游视角"
+          >
+            ✋ 漫游
+          </button>
         </div>
-        <select v-model.number="brushWidth" class="tool-select">
-          <option :value="2">细线 2px</option>
-          <option :value="4">标准 4px</option>
-          <option :value="8">粗轮廓 8px</option>
-          <option :value="16">宽带 16px</option>
-          <option :value="32">涂抹 32px</option>
-        </select>
-      </div>
 
-      <!-- 地标类型切换 -->
-      <div v-if="currentTool === 'stamp'" class="tool-group tool-sub">
-        <button
-          v-for="st in stampList"
-          :key="st.type"
-          class="stamp-select-btn"
-          :class="{ active: selectedStampType === st.type }"
-          @click="selectedStampType = st.type"
-          :title="st.name"
-        >
-          <span>{{ st.icon }}</span>
-          <span>{{ st.name }}</span>
-        </button>
-      </div>
+        <!-- 笔刷调色盘 -->
+        <div v-if="currentTool === 'brush'" class="tool-group tool-sub">
+          <div class="color-picker-row">
+            <button
+              v-for="c in brushColors"
+              :key="c"
+              class="color-dot"
+              :style="{ background: c }"
+              :class="{ active: brushColor === c }"
+              @click="brushColor = c"
+            ></button>
+          </div>
+          <select v-model.number="brushWidth" class="tool-select">
+            <option :value="2">细线 2px</option>
+            <option :value="4">标准 4px</option>
+            <option :value="8">粗轮廓 8px</option>
+            <option :value="16">宽带 16px</option>
+            <option :value="32">涂抹 32px</option>
+          </select>
+        </div>
 
-      <!-- 画布操作组 -->
-      <div class="tool-group map-actions-right">
-        <button class="map-tool-btn" @click="undo" :disabled="historyStack.length === 0" title="撤销上一步">↩️ 撤销</button>
-        <button class="map-tool-btn danger" @click="clearAll" title="清空整个画板">🗑️ 清空画板</button>
-        <button class="map-tool-btn highlight" @click="exportMapImage" title="导出高清地图图片">💾 导出地图</button>
-      </div>
+        <!-- 地标选择 -->
+        <div v-if="currentTool === 'stamp'" class="tool-group tool-sub">
+          <button
+            v-for="st in stampList"
+            :key="st.type"
+            class="stamp-select-btn"
+            :class="{ active: selectedStampType === st.type }"
+            @click="selectedStampType = st.type"
+            :title="st.name"
+          >
+            <span>{{ st.icon }}</span>
+            <span>{{ st.name }}</span>
+          </button>
+        </div>
+
+        <div class="tool-group map-actions-right">
+          <button class="map-tool-btn" @click="undo" :disabled="historyStack.length === 0" title="撤销">↩️ 撤销</button>
+          <button class="map-tool-btn danger" @click="clearAll" title="清空画板">🗑️ 清空画板</button>
+          <button class="map-tool-btn highlight" @click="exportMapImage" title="导出地图">💾 导出地图</button>
+        </div>
+      </template>
+
+      <!-- 3D 专属控制工具 -->
+      <template v-else>
+        <div class="tool-group">
+          <button class="map-tool-btn" :class="{ active: autoRotate3D }" @click="toggleAutoRotate">
+            {{ autoRotate3D ? '⏸️ 暂停自转' : '▶️ 宇宙自转' }}
+          </button>
+          <button class="map-tool-btn" @click="resetCamera3D" title="重置视角">
+            🎯 重置视角
+          </button>
+          <button class="map-tool-btn" @click="focusCurrentVolumeStar" title="定位到当前第二卷（天璇星）">
+            ⭐ 聚焦第二卷（梵净山）
+          </button>
+        </div>
+        <div class="tool-group map-actions-right">
+          <span class="galaxy-tip">💡 拖拽旋转视角 / 滚轮缩放 / 点击星球查看密档</span>
+        </div>
+      </template>
     </div>
 
-    <!-- 地图画布视口 (支持手绘、自由拖拽地标、右键漫游与滚轮缩放) -->
+    <!-- 2D 手绘画布视口 -->
     <div
+      v-show="viewMode === '2d'"
       ref="mapWrapperRef"
       class="worldmap-viewport"
       :class="[`cursor-${isRightPanning ? 'panning' : currentTool}`]"
@@ -100,545 +140,712 @@
       @wheel.prevent="onWheel"
     >
       <div
-        class="worldmap-pan-layer"
-        :style="{ transform: `translate(${panX}px, ${panY}px) scale(${zoomLevel})` }"
+        class="map-canvas-plane"
+        :style="{
+          transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
+          transformOrigin: '0 0'
+        }"
       >
-        <!-- 纯净复古羊皮纸手绘 Canvas (2800 x 1800 像素) -->
-        <canvas
-          ref="canvasRef"
-          width="2800"
-          height="1800"
-          class="map-drawing-canvas"
-        ></canvas>
+        <canvas ref="drawingCanvasRef" class="map-drawing-layer" width="3600" height="2400"></canvas>
+        <canvas ref="routeCanvasRef" class="map-route-layer" width="3600" height="2400"></canvas>
 
-        <!-- 上层路线 SVG 交互层 -->
-        <svg class="map-svg-layer">
-          <g v-for="route in mapRoutes" :key="route.id">
-            <line
-              :x1="route.x1"
-              :y1="route.y1"
-              :x2="route.x2"
-              :y2="route.y2"
-              class="route-line"
-            />
-            <text
-              :x="(route.x1 + route.x2) / 2"
-              :y="(route.y1 + route.y2) / 2 - 8"
-              class="route-label"
-            >
-              {{ route.label }}
-            </text>
-          </g>
-          <line
-            v-if="isDrawingRoute && tempRoute"
-            :x1="tempRoute.x1"
-            :y1="tempRoute.y1"
-            :x2="tempRoute.x2"
-            :y2="tempRoute.y2"
-            class="route-line-temp"
-          />
-        </svg>
-
-        <!-- 地标图元 DOM 层 (支持自由拖拽与双击就地改名) -->
-        <div class="map-landmarks-layer">
-          <div
-            v-for="lm in mapLandmarks"
-            :key="lm.id"
-            class="landmark-item"
-            :class="[lm.type, { selected: selectedLandmarkId === lm.id }]"
-            :style="{ left: lm.x + 'px', top: lm.y + 'px' }"
-            @mousedown.stop="startDragLandmark($event, lm)"
-            @click.stop="selectLandmark(lm)"
-            @dblclick.stop="startEditLandmark(lm)"
-          >
-            <div class="landmark-pin-wrapper">
-              <span class="landmark-icon">{{ lm.icon }}</span>
-              <span class="landmark-glow"></span>
-            </div>
-            <!-- 双击就地修改地名 -->
-            <input
-              v-if="editingLandmarkId === lm.id"
-              ref="landmarkInputRef"
-              v-model="editingLandmarkName"
-              class="inline-landmark-input"
-              @click.stop
-              @mousedown.stop
-              @keydown.enter="confirmEditLandmark(lm)"
-              @keydown.esc="editingLandmarkId = ''"
-              @blur="confirmEditLandmark(lm)"
-            />
-            <div v-else class="landmark-badge">
-              <span class="landmark-name">{{ lm.name }}</span>
-            </div>
-            <button class="landmark-del-btn" @click.stop="deleteLandmark(lm)" title="删除此地标">✕</button>
+        <div
+          v-for="marker in landmarks"
+          :key="marker.id"
+          class="placed-landmark-pin"
+          :class="{ selected: selectedMarkerId === marker.id }"
+          :style="{ left: `${marker.x}px`, top: `${marker.y}px` }"
+          @mousedown.stop="onMarkerMouseDown($event, marker)"
+        >
+          <div class="pin-icon-wrap" :style="{ borderColor: marker.color || '#d4af37' }">
+            <span class="pin-icon">{{ marker.icon }}</span>
           </div>
+          <div class="pin-label" @dblclick.stop="editMarkerName(marker)">
+            {{ marker.title }}
+          </div>
+          <button
+            v-if="selectedMarkerId === marker.id"
+            class="pin-del-btn"
+            @click.stop="deleteMarker(marker.id)"
+            title="删除地标"
+          >
+            ×
+          </button>
         </div>
       </div>
 
-      <!-- 悬浮缩放与导航控制器 -->
-      <div class="map-floating-zoom">
-        <button class="zoom-btn" @click="zoom(1.15)" title="放大">+</button>
-        <button class="zoom-btn" @click="zoom(0.85)" title="缩小">-</button>
-        <button class="zoom-btn reset" @click="resetView" title="重置居中">🎯</button>
+      <div class="zoom-controls-hud">
+        <button class="hud-btn" @click="zoomIn" title="放大">+</button>
+        <div class="hud-scale">{{ Math.round(zoom * 100) }}%</div>
+        <button class="hud-btn" @click="zoomOut" title="缩小">-</button>
+        <button class="hud-btn" @click="resetView" title="重置">⟲</button>
       </div>
+    </div>
 
-      <div class="map-hint">
-        🖌️ 纯净手绘画板 | 鼠标左键绘制/放置地标（双击改名，支持拖拽） | 按住右键漫游 | 滚轮缩放
-      </div>
+    <!-- 3D 宇宙天体星系视口 (Three.js WebGL) -->
+    <div v-show="viewMode === '3d'" class="worldmap-3d-viewport">
+      <div ref="threeCanvasRef" class="three-container"></div>
+
+      <!-- 星球详情信息浮层 (HUD) -->
+      <transition name="fade">
+        <div v-if="selectedPlanet" class="planet-dossier-card">
+          <div class="card-header">
+            <span class="star-badge">{{ selectedPlanet.starName }}</span>
+            <h3 class="planet-title">{{ selectedPlanet.name }}</h3>
+            <button class="close-card-btn" @click="selectedPlanet = null">×</button>
+          </div>
+          <div class="card-body">
+            <div class="dossier-row">
+              <span class="label">📍 坐标位置：</span>
+              <span class="val">{{ selectedPlanet.location }}</span>
+            </div>
+            <div class="dossier-row">
+              <span class="label">📖 对应分卷：</span>
+              <span class="val highlight">{{ selectedPlanet.volume }}</span>
+            </div>
+            <div class="dossier-row">
+              <span class="label">🌐 经纬数据：</span>
+              <span class="val mono">{{ selectedPlanet.coords[0] }}°E, {{ selectedPlanet.coords[1] }}°N</span>
+            </div>
+            <div class="dossier-row">
+              <span class="label">🏯 核心奇观：</span>
+              <span class="val">{{ selectedPlanet.marvel }}</span>
+            </div>
+            <div class="dossier-row">
+              <span class="label">💀 致命威胁：</span>
+              <span class="val danger">{{ selectedPlanet.hazard }}</span>
+            </div>
+            <div class="dossier-desc">
+              {{ selectedPlanet.desc }}
+            </div>
+          </div>
+        </div>
+      </transition>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import * as THREE from 'three';
 
-const props = defineProps<{
-  bookId?: string;
-}>();
+// ─── 维度切换 ─────────────────────────────────────────────────────────────
+const viewMode = ref<'2d' | '3d'>('2d');
 
+// ─── 2D 画板状态 ──────────────────────────────────────────────────────────
 const currentTool = ref<'brush' | 'eraser' | 'stamp' | 'route' | 'pan'>('brush');
-const brushColor = ref('#2b2416');
+const brushColor = ref('#1c1c1c');
 const brushWidth = ref(4);
-
 const brushColors = [
-  '#2b2416', // 墨黑
-  '#8b4513', // 棕褐
-  '#dc2626', // 绯红
-  '#1e40af', // 藏蓝
-  '#065f46', // 苍翠
-  '#d97706', // 琥珀
-  '#7c3aed', // 紫罗兰
-  '#64748b'  // 青灰
+  '#1c1c1c', '#795548', '#b71c1c', '#0d47a1', '#1b5e20', '#e65100', '#4a148c', '#ffd700'
 ];
 
-const selectedStampType = ref('story_point');
-const stampList = [
-  { type: 'story_point', name: '剧情节点', icon: '📍' },
-  { type: 'story_base', name: '主要据点', icon: '🏮' },
-  { type: 'story_danger', name: '危险秘境', icon: '💀' },
-  { type: 'story_mountain', name: '名山祖脉', icon: '🏔️' },
-  { type: 'story_water', name: '水系暗河', icon: '🌊' },
-  { type: 'story_secret', name: '地底暗道', icon: '🗝️' },
-  { type: 'story_city', name: '城镇城池', icon: '🏙️' }
+interface StampItem { type: string; icon: string; name: string; color: string; }
+const stampList: StampItem[] = [
+  { type: 'tower', icon: '🏯', name: '走马古楼', color: '#ffd700' },
+  { type: 'cave', icon: '🕳️', name: '绝险天坑', color: '#e65100' },
+  { type: 'mountain', icon: '⛰️', name: '崇山峻岭', color: '#2e7d32' },
+  { type: 'water', icon: '🌊', name: '地下暗河', color: '#0288d1' },
+  { type: 'danger', icon: '💀', name: '死穴凶煞', color: '#d32f2f' },
+  { type: 'camp', icon: '⛺', name: '宿营大营', color: '#8d6e63' }
 ];
+const selectedStampType = ref('tower');
 
-interface Landmark {
-  id: string;
-  type: string;
-  name: string;
-  icon: string;
-  x: number;
-  y: number;
-}
+interface LandmarkPin { id: string; x: number; y: number; type: string; icon: string; title: string; color: string; }
+const landmarks = ref<LandmarkPin[]>([]);
+const selectedMarkerId = ref<string | null>(null);
 
-interface MapRoute {
-  id: string;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  label: string;
-}
-
-const mapLandmarks = ref<Landmark[]>([]);
-const mapRoutes = ref<MapRoute[]>([]);
-const selectedLandmarkId = ref('');
-
-// 视口与缩放
-const panX = ref(40);
-const panY = ref(40);
-const zoomLevel = ref(0.65);
-
-const canvasRef = ref<HTMLCanvasElement | null>(null);
-const mapWrapperRef = ref<HTMLDivElement | null>(null);
-
-let ctx: CanvasRenderingContext2D | null = null;
-let isDrawing = false;
-let lastX = 0;
-let lastY = 0;
-
+const panX = ref(100);
+const panY = ref(60);
+const zoom = ref(0.75);
+const isRightPanning = ref(false);
+const isDrawing = ref(false);
 const historyStack = ref<ImageData[]>([]);
 
-const editingLandmarkId = ref('');
-const editingLandmarkName = ref('');
-const landmarkInputRef = ref<HTMLInputElement[] | null>(null);
+const mapWrapperRef = ref<HTMLDivElement | null>(null);
+const drawingCanvasRef = ref<HTMLCanvasElement | null>(null);
+const routeCanvasRef = ref<HTMLCanvasElement | null>(null);
 
-function selectLandmark(lm: Landmark) {
-  selectedLandmarkId.value = lm.id;
+// ─── 3D 宇宙星系状态 ─────────────────────────────────────────────────────
+const threeCanvasRef = ref<HTMLDivElement | null>(null);
+const autoRotate3D = ref(true);
+
+interface PlanetData {
+  id: string;
+  name: string;
+  starName: string;
+  volume: string;
+  location: string;
+  coords: [number, number];
+  color: number;
+  size: number;
+  position: [number, number, number];
+  marvel: string;
+  hazard: string;
+  desc: string;
 }
 
-function startEditLandmark(lm: Landmark) {
-  editingLandmarkId.value = lm.id;
-  editingLandmarkName.value = lm.name;
-  nextTick(() => {
-    if (landmarkInputRef.value && landmarkInputRef.value.length > 0) {
-      landmarkInputRef.value[0].focus();
-      landmarkInputRef.value[0].select();
+const sevenStarsPlanets: PlanetData[] = [
+  {
+    id: 'core',
+    name: '长沙 · 走马楼大本营',
+    starName: '🏮 核心始发枢纽',
+    volume: '故事起源 / 楚风文化工作室',
+    location: '湖南省长沙市芙蓉区走马楼巷',
+    coords: [112.977, 28.190],
+    color: 0xffaa00,
+    size: 2.2,
+    position: [0, 0, 0],
+    marvel: '楚风文化工作室、2004时代市井、线索中枢',
+    hazard: '贾老板等黑恶同行竞争与阴谋刺探',
+    desc: '杨涛、胖子与刘菲的大本营，承接全国各地奇闻异事，所有地下探险的起点与归宿。'
+  },
+  {
+    id: 'star1',
+    name: '湖南郴州 · 骑田岭',
+    starName: '⭐ 天枢星',
+    volume: '第一卷：湘南溶洞 (已通关)',
+    location: '湖南省郴州市苏仙区骑田岭深山712矿区',
+    coords: [112.905, 25.639],
+    color: 0x00e5ff,
+    size: 1.6,
+    position: [12, -4, 5],
+    marvel: '712废弃矿道、40米螺旋石筒、地下九层木楼',
+    hazard: '石脸虫、水龙骨致幻花、地下暗河水脉决堤',
+    desc: '第一座走马楼（天枢木楼）沉埋之地，已被声波共振暗河大暴发冲垮，带回6万酬金与夜郎木杯。'
+  },
+  {
+    id: 'star2',
+    name: '贵州铜仁 · 梵净山',
+    starName: '⭐ 天璇星 (🔥 当前征途)',
+    volume: '第二卷：黔东天坑 (正在进行)',
+    location: '贵州省铜仁地区梵净山西麓落水寨',
+    coords: [108.694, 27.915],
+    color: 0xaa00ff,
+    size: 1.8,
+    position: [-10, 8, 14],
+    marvel: '千米垂直绝壁天坑、四根青铜玄铁索倒悬九层水月楼',
+    hazard: '深潭盲眼水鳞蟒、水银重力天平失衡、突发高山暴雨山洪',
+    desc: '第二座走马楼（天璇倒悬水月楼）。凭借门缝下的三重复合摩斯密信破译而来，已购置军绿吉普212整装出征！'
+  },
+  {
+    id: 'star3',
+    name: '湖北宜昌 · 神农架',
+    starName: '⭐ 天玑星',
+    volume: '第三卷：华中冰窟',
+    location: '湖北省西部神农架原始林区与三峡地缝',
+    coords: [110.49, 31.74],
+    color: 0x2979ff,
+    size: 1.5,
+    position: [-16, 18, 8],
+    marvel: '华中屋脊万年高山地下冰洞、三峡绝壁巴人悬棺群',
+    hazard: '极寒失温陷阱、远古冷杉寄生真菌、倒悬悬棺落石',
+    desc: '第三座走马楼（天玑冰魂楼），深藏在零下二十度的地下冰川熔洞内部。'
+  },
+  {
+    id: 'star4',
+    name: '安徽六安 · 大别山',
+    starName: '⭐ 天权星',
+    volume: '第四卷：淮上石宫 (斗勺枢纽)',
+    location: '安徽省六安市金寨县大别山天堂寨',
+    coords: [115.77, 31.12],
+    color: 0x00e676,
+    size: 1.5,
+    position: [6, 24, 0],
+    marvel: '白垩纪巨型花岗岩天险石窟、道家三十六洞天石室',
+    hazard: '巨型磁石矿引发的罗盘失灵与磁场幻象、翻板连环锁',
+    desc: '第四座走马楼（天权枢纽石宫），斗勺与斗柄的折角枢纽，镇守江淮龙脉分水岭。'
+  },
+  {
+    id: 'star5',
+    name: '山东泰安 · 东岳泰山',
+    starName: '⭐ 玉衡星',
+    volume: '第五卷：东岳封禅 (斗柄首星)',
+    location: '山东省泰安市泰山傲徕峰与蒙山溶洞',
+    coords: [117.10, 36.25],
+    color: 0xffd600,
+    size: 1.6,
+    position: [16, 32, -8],
+    marvel: '始皇封禅玉简沉埋秘窟、泰山石敢当镇煞大阵',
+    hazard: '秦代青铜重弩死阵、地下水银灌注墓道',
+    desc: '第五座走马楼（玉衡青铜阙），五岳独尊之龙脊，守卫着古代封禅大典绝密信物。'
+  },
+  {
+    id: 'star6',
+    name: '河北承德 · 燕山雾灵山',
+    starName: '⭐ 开阳星',
+    volume: '第六卷：燕山要塞',
+    location: '河北省承德市兴隆县雾灵山古北口长城地底',
+    coords: [117.48, 40.60],
+    color: 0xff3d00,
+    size: 1.5,
+    position: [12, 42, -18],
+    marvel: '古长城绝壁地底古代军事屯兵防空要塞',
+    hazard: '火药死锁封门、地底声波侦察死角、暗箭网',
+    desc: '第六座走马楼（开阳战楼），明清两代秘密扩建的地下军事禁区。'
+  },
+  {
+    id: 'star7',
+    name: '内蒙古赤峰 · 大兴安岭',
+    starName: '⭐ 摇光星 (终极破军)',
+    volume: '第七卷：极北龙首 (大结局)',
+    location: '内蒙古赤峰市克什克腾旗玄武岩熔岩隧道',
+    coords: [118.87, 43.26],
+    color: 0xffffff,
+    size: 2.0,
+    position: [22, 54, -28],
+    marvel: '红山文化上古太阳神龙玉神坛、死火山熔岩深渊',
+    hazard: '火山地热毒气、上古地磁倒转震荡、终极宿命考验',
+    desc: '第七座走马楼（摇光总龙首）。七楼合一，解开跨越千年的华夏走马楼终极谜团！'
+  }
+];
+
+const selectedPlanet = ref<PlanetData | null>(null);
+
+let scene: THREE.Scene | null = null;
+let camera: THREE.PerspectiveCamera | null = null;
+let renderer: THREE.WebGLRenderer | null = null;
+let animFrameId = 0;
+let planetMeshes: THREE.Mesh[] = [];
+let constellationLine: THREE.Line | null = null;
+
+// ─── 切换模式 ─────────────────────────────────────────────────────────────
+function switchViewMode(mode: '2d' | '3d') {
+  viewMode.value = mode;
+  if (mode === '3d') {
+    nextTick(() => {
+      initThreeScene();
+    });
+  } else {
+    cleanupThreeScene();
+  }
+}
+
+// ─── 初始化 3D 宇宙星系 ───────────────────────────────────────────────────
+function initThreeScene() {
+  if (!threeCanvasRef.value) return;
+  cleanupThreeScene();
+
+  const width = threeCanvasRef.value.clientWidth || 1000;
+  const height = threeCanvasRef.value.clientHeight || 700;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x060814);
+  scene.fog = new THREE.FogExp2(0x060814, 0.008);
+
+  camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+  camera.position.set(0, 25, 75);
+  camera.lookAt(0, 20, 0);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(width, height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  threeCanvasRef.value.appendChild(renderer.domElement);
+
+  // 1. 璀璨星空背景粒子
+  const starGeo = new THREE.BufferGeometry();
+  const starCount = 3000;
+  const starPos = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount * 3; i += 3) {
+    starPos[i] = (Math.random() - 0.5) * 400;
+    starPos[i + 1] = (Math.random() - 0.5) * 400;
+    starPos[i + 2] = (Math.random() - 0.5) * 400;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  const starMat = new THREE.PointsMaterial({ color: 0x88bbff, size: 0.8, transparent: true, opacity: 0.8 });
+  const starField = new THREE.Points(starGeo, starMat);
+  scene.add(starField);
+
+  // 2. 环境光与点光源
+  const ambientLight = new THREE.AmbientLight(0x404060, 2.5);
+  scene.add(ambientLight);
+
+  const sunLight = new THREE.PointLight(0xffaa00, 3, 100);
+  sunLight.position.set(0, 0, 0);
+  scene.add(sunLight);
+
+  // 3. 构建北斗七星与长沙核心天体星球
+  planetMeshes = [];
+  const pointsForLine: THREE.Vector3[] = [];
+
+  sevenStarsPlanets.forEach((p) => {
+    const geo = new THREE.SphereGeometry(p.size, 32, 32);
+    const mat = new THREE.MeshStandardMaterial({
+      color: p.color,
+      emissive: p.color,
+      emissiveIntensity: p.id === 'star2' ? 0.8 : (p.id === 'core' ? 0.9 : 0.4),
+      roughness: 0.3,
+      metalness: 0.2
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(...p.position);
+    mesh.userData = p;
+    scene?.add(mesh);
+    planetMeshes.push(mesh);
+
+    // 发光光晕光圈
+    const ringGeo = new THREE.RingGeometry(p.size * 1.3, p.size * 1.5, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color: p.color, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.rotation.x = Math.PI / 2;
+    mesh.add(ringMesh);
+
+    // 记录连线点 (跳过中心核心，纯连七星)
+    if (p.id !== 'core') {
+      pointsForLine.push(new THREE.Vector3(...p.position));
+    }
+  });
+
+  // 4. 北斗七星发光星座连线
+  if (pointsForLine.length > 1) {
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(pointsForLine);
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.85, linewidth: 2 });
+    const line = new THREE.Line(lineGeo, lineMat);
+    scene.add(line);
+    constellationLine = line;
+  }
+
+  // 5. 交互：鼠标拖拽与射线拾取
+  setup3DInteraction();
+
+  // 6. 渲染循环
+  function animate() {
+    animFrameId = requestAnimationFrame(animate);
+    if (autoRotate3D.value && scene) {
+      scene.rotation.y += 0.0015;
+    }
+    renderer?.render(scene!, camera!);
+  }
+  animate();
+}
+
+function setup3DInteraction() {
+  if (!threeCanvasRef.value || !renderer) return;
+  const dom = renderer.domElement;
+  let isDragging = false;
+  let prevMouseX = 0;
+  let prevMouseY = 0;
+
+  dom.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    prevMouseX = e.clientX;
+    prevMouseY = e.clientY;
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging || !scene || !camera) return;
+    const deltaX = e.clientX - prevMouseX;
+    const deltaY = e.clientY - prevMouseY;
+    prevMouseX = e.clientX;
+    prevMouseY = e.clientY;
+
+    scene.rotation.y += deltaX * 0.005;
+    camera.position.y = Math.max(-20, Math.min(80, camera.position.y - deltaY * 0.15));
+  });
+
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  dom.addEventListener('wheel', (e) => {
+    if (!camera) return;
+    camera.position.z = Math.max(15, Math.min(180, camera.position.z + e.deltaY * 0.05));
+  });
+
+  // 点击拾取星球
+  dom.addEventListener('click', (e) => {
+    if (!camera || !scene) return;
+    const rect = dom.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(planetMeshes);
+
+    if (intersects.length > 0) {
+      const hit = intersects[0].object;
+      selectedPlanet.value = hit.userData as PlanetData;
     }
   });
 }
 
-function confirmEditLandmark(lm: Landmark) {
-  if (editingLandmarkId.value !== lm.id) return;
-  const val = editingLandmarkName.value.trim();
-  if (val) {
-    lm.name = val;
-    saveMapData();
+function toggleAutoRotate() {
+  autoRotate3D.value = !autoRotate3D.value;
+}
+
+function resetCamera3D() {
+  if (camera && scene) {
+    camera.position.set(0, 25, 75);
+    scene.rotation.set(0, 0, 0);
   }
-  editingLandmarkId.value = '';
 }
 
-function deleteLandmark(lm: Landmark) {
-  mapLandmarks.value = mapLandmarks.value.filter(l => l.id !== lm.id);
-  saveMapData();
+function focusCurrentVolumeStar() {
+  // 聚焦第二卷（梵净山天璇星）
+  const star2 = sevenStarsPlanets.find(p => p.id === 'star2');
+  if (star2) {
+    selectedPlanet.value = star2;
+    if (camera && scene) {
+      camera.position.set(star2.position[0], star2.position[1] + 5, star2.position[2] + 18);
+      scene.rotation.y = 0;
+    }
+  }
 }
 
-// 拖拽地标
-let isDraggingLandmark = false;
-let dragLandmark: Landmark | null = null;
-let dragOffsetX = 0;
-let dragOffsetY = 0;
-
-function startDragLandmark(e: MouseEvent, lm: Landmark) {
-  isDraggingLandmark = true;
-  dragLandmark = lm;
-  const rect = mapWrapperRef.value?.getBoundingClientRect();
-  if (!rect) return;
-  const logicalX = (e.clientX - rect.left - panX.value) / zoomLevel.value;
-  const logicalY = (e.clientY - rect.top - panY.value) / zoomLevel.value;
-  dragOffsetX = logicalX - lm.x;
-  dragOffsetY = logicalY - lm.y;
+function cleanupThreeScene() {
+  if (animFrameId) cancelAnimationFrame(animFrameId);
+  if (renderer && renderer.domElement) {
+    renderer.domElement.remove();
+  }
+  scene = null;
+  camera = null;
+  renderer = null;
 }
 
-const isDrawingRoute = ref(false);
-const tempRoute = ref<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
-
+// ─── 2D 手绘画板逻辑 ─────────────────────────────────────────────────────
 onMounted(() => {
-  if (canvasRef.value) {
-    ctx = canvasRef.value.getContext('2d', { willReadFrequently: true });
-    initCleanCanvasBackground();
-    loadMapData();
-  }
-  window.addEventListener('mousemove', onGlobalMouseMove);
-  window.addEventListener('mouseup', onGlobalMouseUp);
+  init2DCanvas();
 });
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', onGlobalMouseMove);
-  window.removeEventListener('mouseup', onGlobalMouseUp);
+  cleanupThreeScene();
 });
 
-watch(() => props.bookId, () => {
-  loadMapData();
-});
+function init2DCanvas() {
+  const dCanvas = drawingCanvasRef.value;
+  if (!dCanvas) return;
+  const ctx = dCanvas.getContext('2d');
+  if (!ctx) return;
 
-// 初始化纯净羊皮纸方格底色
-function initCleanCanvasBackground() {
-  if (!ctx || !canvasRef.value) return;
-  const w = canvasRef.value.width;
-  const h = canvasRef.value.height;
+  // 浅色羊皮纸背景
+  ctx.fillStyle = '#f8f4eb';
+  ctx.fillRect(0, 0, dCanvas.width, dCanvas.height);
 
-  // 1. 羊皮纸护眼暖底色
-  ctx.fillStyle = '#fcf8ec';
-  ctx.fillRect(0, 0, w, h);
-
-  // 2. 绘制轻量复古方格网点线 (辅助手绘构图)
-  ctx.save();
-  ctx.strokeStyle = '#e8dec5';
+  // 极浅网格
+  ctx.strokeStyle = '#ebdcc7';
   ctx.lineWidth = 1;
-  const step = 50;
-  for (let x = 0; x < w; x += step) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.stroke();
+  for (let x = 0; x < dCanvas.width; x += 100) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, dCanvas.height); ctx.stroke();
   }
-  for (let y = 0; y < h; y += step) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
+  for (let y = 0; y < dCanvas.height; y += 100) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(dCanvas.width, y); ctx.stroke();
   }
-  ctx.restore();
+
+  saveHistory();
 }
 
-function saveSnapshot() {
-  if (!ctx || !canvasRef.value) return;
-  if (historyStack.value.length >= 15) historyStack.value.shift();
-  historyStack.value.push(ctx.getImageData(0, 0, canvasRef.value.width, canvasRef.value.height));
+function saveHistory() {
+  const dCanvas = drawingCanvasRef.value;
+  if (!dCanvas) return;
+  const ctx = dCanvas.getContext('2d');
+  if (!ctx) return;
+  if (historyStack.value.length > 20) historyStack.value.shift();
+  historyStack.value.push(ctx.getImageData(0, 0, dCanvas.width, dCanvas.height));
 }
 
 function undo() {
-  if (historyStack.value.length === 0 || !ctx) return;
-  const prev = historyStack.value.pop();
-  if (prev) {
-    ctx.putImageData(prev, 0, 0);
-    saveMapData();
-  }
+  if (historyStack.value.length <= 1) return;
+  historyStack.value.pop();
+  const prev = historyStack.value[historyStack.value.length - 1];
+  const dCanvas = drawingCanvasRef.value;
+  if (!dCanvas || !prev) return;
+  const ctx = dCanvas.getContext('2d');
+  if (ctx) ctx.putImageData(prev, 0, 0);
 }
 
 function clearAll() {
-  initCleanCanvasBackground();
-  mapLandmarks.value = [];
-  mapRoutes.value = [];
-  historyStack.value = [];
-  saveMapData();
-}
-
-// 漫游拖拽
-const isRightPanning = ref(false);
-let isPanning = false;
-let startPanX = 0;
-let startPanY = 0;
-
-function onMouseDown(e: MouseEvent) {
-  const rect = mapWrapperRef.value?.getBoundingClientRect();
-  if (!rect || !ctx || !canvasRef.value) return;
-
-  if (e.button === 2) {
-    isRightPanning.value = true;
-    startPanX = e.clientX - panX.value;
-    startPanY = e.clientY - panY.value;
-    return;
-  }
-
-  if (e.button !== 0) return;
-
-  const logicalX = (e.clientX - rect.left - panX.value) / zoomLevel.value;
-  const logicalY = (e.clientY - rect.top - panY.value) / zoomLevel.value;
-
-  if (currentTool.value === 'pan' || e.altKey) {
-    isPanning = true;
-    startPanX = e.clientX - panX.value;
-    startPanY = e.clientY - panY.value;
-    return;
-  }
-
-  if (currentTool.value === 'brush' || currentTool.value === 'eraser') {
-    saveSnapshot();
-    isDrawing = true;
-    lastX = logicalX;
-    lastY = logicalY;
-
-    ctx.beginPath();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    if (currentTool.value === 'eraser') {
-      ctx.strokeStyle = '#fcf8ec';
-      ctx.lineWidth = brushWidth.value * 3;
-    } else {
-      ctx.strokeStyle = brushColor.value;
-      ctx.lineWidth = brushWidth.value;
-    }
-
-    ctx.moveTo(lastX, lastY);
-    return;
-  }
-
-  if (currentTool.value === 'stamp') {
-    const stamp = stampList.find(s => s.type === selectedStampType.value) || stampList[0];
-    const newLm: Landmark = {
-      id: 'lm_' + Date.now(),
-      type: stamp.type,
-      name: stamp.name,
-      icon: stamp.icon,
-      x: Math.round(logicalX),
-      y: Math.round(logicalY)
-    };
-    mapLandmarks.value.push(newLm);
-    saveMapData();
-    nextTick(() => {
-      startEditLandmark(newLm);
-    });
-    return;
-  }
-
-  if (currentTool.value === 'route') {
-    if (!isDrawingRoute.value) {
-      isDrawingRoute.value = true;
-      tempRoute.value = { x1: logicalX, y1: logicalY, x2: logicalX, y2: logicalY };
-    } else if (tempRoute.value) {
-      mapRoutes.value.push({
-        id: 'route_' + Date.now(),
-        x1: tempRoute.value.x1,
-        y1: tempRoute.value.y1,
-        x2: logicalX,
-        y2: logicalY,
-        label: '路线'
-      });
-      isDrawingRoute.value = false;
-      tempRoute.value = null;
-      saveMapData();
-    }
-  }
-}
-
-function onGlobalMouseMove(e: MouseEvent) {
-  if (isRightPanning.value) {
-    panX.value = e.clientX - startPanX;
-    panY.value = e.clientY - startPanY;
-    return;
-  }
-
-  if (isDraggingLandmark && dragLandmark) {
-    const rect = mapWrapperRef.value?.getBoundingClientRect();
-    if (!rect) return;
-    const logicalX = (e.clientX - rect.left - panX.value) / zoomLevel.value;
-    const logicalY = (e.clientY - rect.top - panY.value) / zoomLevel.value;
-    dragLandmark.x = Math.round(logicalX - dragOffsetX);
-    dragLandmark.y = Math.round(logicalY - dragOffsetY);
-    return;
-  }
-
-  if (isPanning) {
-    panX.value = e.clientX - startPanX;
-    panY.value = e.clientY - startPanY;
-    return;
-  }
-
-  if (isDrawing && ctx) {
-    const rect = mapWrapperRef.value?.getBoundingClientRect();
-    if (!rect) return;
-    const logicalX = (e.clientX - rect.left - panX.value) / zoomLevel.value;
-    const logicalY = (e.clientY - rect.top - panY.value) / zoomLevel.value;
-    ctx.lineTo(logicalX, logicalY);
-    ctx.stroke();
-    lastX = logicalX;
-    lastY = logicalY;
-    return;
-  }
-
-  if (isDrawingRoute.value && tempRoute.value) {
-    const rect = mapWrapperRef.value?.getBoundingClientRect();
-    if (!rect) return;
-    tempRoute.value.x2 = (e.clientX - rect.left - panX.value) / zoomLevel.value;
-    tempRoute.value.y2 = (e.clientY - rect.top - panY.value) / zoomLevel.value;
-  }
-}
-
-function onGlobalMouseUp(e: MouseEvent) {
-  if (isRightPanning.value) {
-    isRightPanning.value = false;
-  }
-  if (isDrawing) {
-    isDrawing = false;
-    saveMapData();
-  }
-  if (isDraggingLandmark) {
-    isDraggingLandmark = false;
-    dragLandmark = null;
-    saveMapData();
-  }
-  isPanning = false;
-}
-
-function onWheel(e: WheelEvent) {
-  const delta = e.deltaY < 0 ? 1.12 : 0.88;
-  zoomLevel.value = Math.min(Math.max(0.2, zoomLevel.value * delta), 3.0);
-}
-
-function zoom(factor: number) {
-  zoomLevel.value = Math.min(Math.max(0.2, zoomLevel.value * factor), 3.0);
-}
-
-function resetView() {
-  zoomLevel.value = 0.65;
-  panX.value = 40;
-  panY.value = 40;
-}
-
-function saveMapData() {
-  if (!props.bookId || !canvasRef.value) return;
-  try {
-    const dataUrl = canvasRef.value.toDataURL('image/png', 0.85);
-    const mapObj = {
-      drawingDataUrl: dataUrl,
-      landmarks: mapLandmarks.value,
-      routes: mapRoutes.value
-    };
-    localStorage.setItem(`NOVELCRAFT_WORLD_MAP_${props.bookId}`, JSON.stringify(mapObj));
-  } catch (e) {}
-}
-
-function loadMapData() {
-  if (!props.bookId || !ctx || !canvasRef.value) return;
-  initCleanCanvasBackground();
-  try {
-    const raw = localStorage.getItem(`NOVELCRAFT_WORLD_MAP_${props.bookId}`);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.landmarks) mapLandmarks.value = parsed.landmarks;
-      if (parsed.routes) mapRoutes.value = parsed.routes;
-      if (parsed.drawingDataUrl) {
-        const img = new Image();
-        img.onload = () => {
-          ctx?.drawImage(img, 0, 0);
-        };
-        img.src = parsed.drawingDataUrl;
-      }
-    }
-  } catch (e) {}
+  if (!confirm('确认清空所有手绘画笔和地标吗？')) return;
+  landmarks.value = [];
+  init2DCanvas();
 }
 
 function exportMapImage() {
-  if (!canvasRef.value) return;
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = canvasRef.value.width;
-  tempCanvas.height = canvasRef.value.height;
-  const tCtx = tempCanvas.getContext('2d');
-  if (!tCtx) return;
+  const dCanvas = drawingCanvasRef.value;
+  if (!dCanvas) return;
+  const link = document.createElement('a');
+  link.download = `走马楼华夏全景地图_${Date.now()}.png`;
+  link.href = dCanvas.toDataURL('image/png');
+  link.click();
+}
 
-  tCtx.drawImage(canvasRef.value, 0, 0);
+let lastX = 0;
+let lastY = 0;
 
-  tCtx.strokeStyle = '#dc2626';
-  tCtx.lineWidth = 3.5;
-  tCtx.setLineDash([8, 6]);
-  mapRoutes.value.forEach(r => {
-    tCtx.beginPath();
-    tCtx.moveTo(r.x1, r.y1);
-    tCtx.lineTo(r.x2, r.y2);
-    tCtx.stroke();
-  });
+function onMouseDown(e: MouseEvent) {
+  if (viewMode.value !== '2d') return;
+  if (e.button === 2 || currentTool.value === 'pan') {
+    isRightPanning.value = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    window.addEventListener('mousemove', onMouseMovePan);
+    window.addEventListener('mouseup', onMouseUpPan);
+    return;
+  }
 
-  mapLandmarks.value.forEach(lm => {
-    tCtx.font = 'bold 20px "Microsoft YaHei", sans-serif';
-    tCtx.textAlign = 'center';
-    tCtx.fillStyle = '#1c1917';
-    tCtx.fillText(`${lm.icon} ${lm.name}`, lm.x, lm.y - 12);
-  });
+  if (e.button === 0) {
+    const dCanvas = drawingCanvasRef.value;
+    if (!dCanvas) return;
+    const rect = dCanvas.getBoundingClientRect();
+    const canvasX = (e.clientX - rect.left) / zoom.value;
+    const canvasY = (e.clientY - rect.top) / zoom.value;
 
-  const a = document.createElement('a');
-  a.download = `手绘世界观地图_${Date.now()}.png`;
-  a.href = tempCanvas.toDataURL('image/png');
-  a.click();
+    if (currentTool.value === 'stamp') {
+      const st = stampList.find(s => s.type === selectedStampType.value) || stampList[0];
+      landmarks.value.push({
+        id: `pin_${Date.now()}`,
+        x: Math.round(canvasX),
+        y: Math.round(canvasY),
+        type: st.type,
+        icon: st.icon,
+        title: st.name,
+        color: st.color
+      });
+      return;
+    }
+
+    if (currentTool.value === 'brush' || currentTool.value === 'eraser') {
+      isDrawing.value = true;
+      lastX = canvasX;
+      lastY = canvasY;
+      const ctx = dCanvas.getContext('2d');
+      if (ctx) {
+        ctx.beginPath();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = brushWidth.value;
+        ctx.strokeStyle = currentTool.value === 'eraser' ? '#f8f4eb' : brushColor.value;
+        ctx.moveTo(lastX, lastY);
+      }
+      window.addEventListener('mousemove', onMouseMoveDraw);
+      window.addEventListener('mouseup', onMouseUpDraw);
+    }
+  }
+}
+
+function onMouseMoveDraw(e: MouseEvent) {
+  if (!isDrawing.value) return;
+  const dCanvas = drawingCanvasRef.value;
+  if (!dCanvas) return;
+  const rect = dCanvas.getBoundingClientRect();
+  const canvasX = (e.clientX - rect.left) / zoom.value;
+  const canvasY = (e.clientY - rect.top) / zoom.value;
+
+  const ctx = dCanvas.getContext('2d');
+  if (ctx) {
+    ctx.lineTo(canvasX, canvasY);
+    ctx.stroke();
+  }
+}
+
+function onMouseUpDraw() {
+  if (isDrawing.value) {
+    isDrawing.value = false;
+    saveHistory();
+  }
+  window.removeEventListener('mousemove', onMouseMoveDraw);
+  window.removeEventListener('mouseup', onMouseUpDraw);
+}
+
+function onMouseMovePan(e: MouseEvent) {
+  if (!isRightPanning.value) return;
+  panX.value += e.clientX - lastX;
+  panY.value += e.clientY - lastY;
+  lastX = e.clientX;
+  lastY = e.clientY;
+}
+
+function onMouseUpPan() {
+  isRightPanning.value = false;
+  window.removeEventListener('mousemove', onMouseMovePan);
+  window.removeEventListener('mouseup', onMouseUpPan);
+}
+
+function onWheel(e: WheelEvent) {
+  if (viewMode.value !== '2d') return;
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  const newZoom = Math.max(0.2, Math.min(3.0, zoom.value * delta));
+  zoom.value = parseFloat(newZoom.toFixed(2));
+}
+
+function zoomIn() { zoom.value = Math.min(3.0, parseFloat((zoom.value + 0.15).toFixed(2))); }
+function zoomOut() { zoom.value = Math.max(0.2, parseFloat((zoom.value - 0.15).toFixed(2))); }
+function resetView() { panX.value = 100; panY.value = 60; zoom.value = 0.75; }
+
+function onMarkerMouseDown(e: MouseEvent, marker: LandmarkPin) {
+  selectedMarkerId.value = marker.id;
+  let startX = e.clientX;
+  let startY = e.clientY;
+  const initPinX = marker.x;
+  const initPinY = marker.y;
+
+  function onMove(ev: MouseEvent) {
+    const dx = (ev.clientX - startX) / zoom.value;
+    const dy = (ev.clientY - startY) / zoom.value;
+    marker.x = Math.round(initPinX + dx);
+    marker.y = Math.round(initPinY + dy);
+  }
+
+  function onUp() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  }
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+function editMarkerName(marker: LandmarkPin) {
+  const name = prompt('修改地标名称：', marker.title);
+  if (name) marker.title = name;
+}
+
+function deleteMarker(id: string) {
+  landmarks.value = landmarks.value.filter(m => m.id !== id);
 }
 </script>
 
 <style scoped>
 .worldmap-container {
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  background: #1c1813;
-  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background: #111420;
   position: relative;
+  overflow: hidden;
   user-select: none;
 }
 
+/* 工具栏 */
 .worldmap-toolbar {
-  height: 52px;
-  background: #191510;
-  border-bottom: 1px solid #382e22;
   display: flex;
   align-items: center;
-  padding: 0 16px;
   gap: 12px;
+  padding: 8px 16px;
+  background: #1a1d2d;
+  border-bottom: 1px solid #2d334d;
   z-index: 20;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  flex-wrap: nowrap;
-  overflow-x: auto;
+}
+
+.mode-toggle-group {
+  background: #0f111c;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #3d466b;
+}
+
+.mode-btn {
+  font-weight: bold;
+  border-radius: 6px !important;
+}
+
+.mode-btn.galaxy-btn.active {
+  background: linear-gradient(135deg, #7b1fa2, #303f9f) !important;
+  box-shadow: 0 0 12px rgba(170, 0, 255, 0.6);
 }
 
 .tool-group {
@@ -647,68 +854,58 @@ function exportMapImage() {
   gap: 6px;
 }
 
+.map-actions-right {
+  margin-left: auto;
+}
+
 .map-tool-btn {
-  padding: 6px 14px;
-  background: #272018;
-  color: #d6ccba;
-  border: 1px solid #473a2b;
+  padding: 6px 12px;
+  background: #252a3f;
+  color: #cfd8dc;
+  border: 1px solid #3a4260;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
+  transition: all 0.2s;
 }
 
 .map-tool-btn:hover {
-  background: #3a3126;
+  background: #333a56;
+  border-color: #ffd700;
   color: #fff;
 }
 
 .map-tool-btn.active {
-  background: #b45309;
-  color: #fff;
-  border-color: #f59e0b;
-  font-weight: 600;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
+  background: #ffd700;
+  color: #111;
+  border-color: #ffd700;
+  font-weight: bold;
 }
 
 .map-tool-btn.highlight {
-  background: #059669;
-  border-color: #10b981;
+  background: #2e7d32;
   color: #fff;
-  font-weight: 600;
-}
-
-.map-tool-btn.highlight:hover {
-  background: #047857;
 }
 
 .map-tool-btn.danger {
-  background: #7f1d1d;
-  border-color: #991b1b;
-  color: #fee2e2;
-}
-
-.map-tool-btn.danger:hover {
-  background: #991b1b;
+  background: #b71c1c;
+  color: #fff;
 }
 
 .color-picker-row {
   display: flex;
-  align-items: center;
-  gap: 5px;
+  gap: 4px;
+  background: #111420;
+  padding: 4px 8px;
+  border-radius: 6px;
 }
 
 .color-dot {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 2px solid #574635;
+  border: 2px solid transparent;
   cursor: pointer;
-  transition: transform 0.1s;
 }
 
 .color-dot.active {
@@ -716,226 +913,245 @@ function exportMapImage() {
   transform: scale(1.2);
 }
 
-.tool-select {
-  padding: 4px 8px;
-  background: #272018;
-  color: #d6ccba;
-  border: 1px solid #473a2b;
-  border-radius: 5px;
-  font-size: 11px;
-}
-
 .stamp-select-btn {
   padding: 4px 8px;
-  background: #272018;
-  color: #d6ccba;
-  border: 1px solid #473a2b;
-  border-radius: 5px;
-  font-size: 11px;
+  background: #1e2235;
+  border: 1px solid #333a56;
+  color: #cfd8dc;
+  border-radius: 4px;
+  font-size: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 3px;
-  white-space: nowrap;
+  gap: 4px;
 }
 
 .stamp-select-btn.active {
-  background: #7c3aed;
-  color: #fff;
-  border-color: #a78bfa;
+  background: #ffd700;
+  color: #111;
+  border-color: #ffd700;
 }
 
-.map-actions-right {
-  margin-left: auto;
+.galaxy-tip {
+  font-size: 12px;
+  color: #90caf9;
 }
 
+/* 2D 画布 */
 .worldmap-viewport {
   flex: 1;
   position: relative;
   overflow: hidden;
-  background: radial-gradient(circle at center, #251e18 0%, #120e0a 100%);
+  background: #161928;
 }
 
-.cursor-pan { cursor: grab; }
-.cursor-panning { cursor: grabbing !important; }
-.cursor-brush { cursor: crosshair; }
-.cursor-eraser { cursor: cell; }
-.cursor-stamp { cursor: copy; }
-.cursor-route { cursor: pointer; }
+.map-canvas-plane {
+  position: absolute;
+  width: 3600px;
+  height: 2400px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+}
 
-.worldmap-pan-layer {
+.map-drawing-layer, .map-route-layer {
   position: absolute;
   top: 0;
   left: 0;
-  transform-origin: 0 0;
-  will-change: transform;
-}
-
-.map-drawing-canvas {
-  display: block;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.85);
-}
-
-.map-svg-layer {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none;
 }
 
-.route-line {
-  stroke: #dc2626;
-  stroke-width: 3.5;
-  stroke-dasharray: 8, 6;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
-}
-
-.route-line-temp {
-  stroke: #f59e0b;
-  stroke-width: 3;
-  stroke-dasharray: 6, 6;
-}
-
-.route-label {
-  fill: #fff;
-  font-size: 13px;
-  font-weight: bold;
-  text-anchor: middle;
-  paint-order: stroke fill;
-  stroke: #1c1917;
-  stroke-width: 4px;
-}
-
-.map-landmarks-layer {
+.placed-landmark-pin {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.landmark-item {
-  position: absolute;
+  transform: translate(-50%, -100%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  cursor: grab;
-  pointer-events: auto;
-  transform: translate(-50%, -100%);
-  transition: transform 0.1s;
+  cursor: move;
+  z-index: 10;
 }
 
-.landmark-item:hover {
-  transform: translate(-50%, -105%) scale(1.08);
-  z-index: 30;
-}
-
-.landmark-pin-wrapper {
-  position: relative;
+.pin-icon-wrap {
+  width: 36px;
+  height: 36px;
+  background: rgba(26, 29, 45, 0.95);
+  border: 2px solid #ffd700;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-.landmark-icon {
-  font-size: 28px;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
-}
-
-.landmark-badge {
-  margin-top: -2px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: rgba(24, 20, 16, 0.95);
-  border: 1px solid #d97706;
-  border-radius: 6px;
-  padding: 3px 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+.pin-label {
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: 1px solid #ffd700;
   white-space: nowrap;
 }
 
-.landmark-name {
-  font-size: 12px;
-  font-weight: 700;
-  color: #fef3c7;
-}
-
-.inline-landmark-input {
-  margin-top: 2px;
-  background: #1c1917;
-  color: #fff;
-  border: 1px solid #3b82f6;
-  border-radius: 4px;
-  font-size: 12px;
-  padding: 2px 6px;
-  text-align: center;
-}
-
-.landmark-del-btn {
+.pin-del-btn {
   position: absolute;
   top: -8px;
   right: -8px;
-  background: #ef4444;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #b71c1c;
   color: #fff;
   border: none;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  font-size: 10px;
-  display: none;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
 }
 
-.landmark-item:hover .landmark-del-btn {
-  display: flex;
-}
-
-.map-floating-zoom {
+.zoom-controls-hud {
   position: absolute;
+  bottom: 20px;
   right: 20px;
-  bottom: 24px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  z-index: 10;
+  background: rgba(26, 29, 45, 0.9);
+  border: 1px solid #3d466b;
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+  z-index: 15;
 }
 
-.zoom-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  background: rgba(28, 22, 16, 0.9);
-  border: 1px solid #4a3e2f;
-  color: #f5ede0;
-  font-size: 18px;
-  font-weight: bold;
+.hud-btn {
+  width: 32px;
+  height: 32px;
+  background: #1e2235;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
+}
+
+.hud-scale {
+  text-align: center;
+  font-size: 11px;
+  color: #ffd700;
+  padding: 2px 0;
+}
+
+/* 3D WebGL 视口 */
+.worldmap-3d-viewport {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.three-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* 3D 悬浮密档卡片 */
+.planet-dossier-card {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 380px;
+  background: rgba(16, 20, 36, 0.95);
+  border: 1px solid #7b1fa2;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(170, 0, 255, 0.3);
+  backdrop-filter: blur(10px);
+  color: #e0e0e0;
+  z-index: 30;
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(123, 31, 162, 0.4), rgba(48, 63, 159, 0.4));
+  border-bottom: 1px solid rgba(170, 0, 255, 0.3);
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-  transition: all 0.15s;
+  position: relative;
 }
 
-.zoom-btn:hover {
-  background: #d97706;
+.star-badge {
+  font-size: 12px;
+  background: #ffaa00;
+  color: #000;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+
+.planet-title {
+  margin: 0;
+  font-size: 16px;
   color: #fff;
-  border-color: #f59e0b;
 }
 
-.map-hint {
-  position: absolute;
-  left: 20px;
-  bottom: 20px;
-  background: rgba(18, 14, 10, 0.9);
-  border: 1px solid #4a3e2f;
-  border-radius: 6px;
-  padding: 6px 14px;
-  color: #c4b5a0;
-  font-size: 11px;
-  z-index: 10;
-  pointer-events: none;
+.close-card-btn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #aaa;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.dossier-row {
+  display: flex;
+}
+
+.dossier-row .label {
+  color: #90caf9;
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.dossier-row .val {
+  color: #fff;
+  word-break: break-all;
+}
+
+.dossier-row .val.highlight {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.dossier-row .val.danger {
+  color: #ff5252;
+}
+
+.dossier-row .val.mono {
+  font-family: monospace;
+  color: #69f0ae;
+}
+
+.dossier-desc {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  font-size: 12px;
+  line-height: 1.6;
+  color: #b0bec5;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s, transform 0.3s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>
