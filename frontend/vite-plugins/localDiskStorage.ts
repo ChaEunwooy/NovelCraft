@@ -595,6 +595,24 @@ export function localDiskStoragePlugin(): Plugin {
                 if (fs.existsSync(jsonPath)) {
                   oldMeta = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
                 }
+                if (Array.isArray(book.volumes) && Array.isArray(oldMeta.volumes)) {
+                  const mergedVolumes = book.volumes.map((bv: any) => {
+                    const ov = oldMeta.volumes.find((v: any) => v.id === bv.id || v.title === bv.title);
+                    if (ov && Array.isArray(ov.chapters) && Array.isArray(bv.chapters)) {
+                      const chapMap = new Map();
+                      ov.chapters.forEach((c: any) => chapMap.set(c.id || c.title, c));
+                      bv.chapters.forEach((c: any) => chapMap.set(c.id || c.title, c));
+                      return {
+                        ...ov,
+                        ...bv,
+                        chapters: Array.from(chapMap.values()),
+                        wordCount: Array.from(chapMap.values()).reduce((sum: number, cur: any) => sum + (cur.wordCount || 0), 0)
+                      };
+                    }
+                    return bv;
+                  });
+                  book.volumes = mergedVolumes;
+                }
                 const merged = { ...oldMeta, ...book };
                 fs.writeFileSync(jsonPath, JSON.stringify(merged, null, 2), 'utf8');
                 console.log(`[ViteStorage] 💾 成功将作品【${book.title}】的最新分卷与章节元数据落盘至 novel.json！`);
