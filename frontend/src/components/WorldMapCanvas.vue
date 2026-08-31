@@ -16,55 +16,20 @@
           class="map-tool-btn mode-btn galaxy-btn"
           :class="{ active: viewMode === '3d' }"
           @click="switchViewMode('3d')"
-          title="切换至 3D 华夏北斗天体星系图谱"
+          title="切换至 3D 角色星丛天体模拟器 (NEST-DRAMA 原生 3D 星丛)"
         >
-          🌌 3D 华夏北斗星系
+          🌌 3D 角色星丛天体
         </button>
       </div>
 
       <!-- 2D 专属绘图工具 -->
       <template v-if="viewMode === '2d'">
         <div class="tool-group">
-          <button
-            class="map-tool-btn"
-            :class="{ active: currentTool === 'brush' }"
-            @click="currentTool = 'brush'"
-            title="画笔工具"
-          >
-            🖌️ 笔刷
-          </button>
-          <button
-            class="map-tool-btn"
-            :class="{ active: currentTool === 'eraser' }"
-            @click="currentTool = 'eraser'"
-            title="橡皮擦"
-          >
-            🧹 橡皮
-          </button>
-          <button
-            class="map-tool-btn"
-            :class="{ active: currentTool === 'stamp' }"
-            @click="currentTool = 'stamp'"
-            title="放置地标"
-          >
-            📍 放置地标
-          </button>
-          <button
-            class="map-tool-btn"
-            :class="{ active: currentTool === 'route' }"
-            @click="currentTool = 'route'"
-            title="绘制路线"
-          >
-            🚩 绘制路线
-          </button>
-          <button
-            class="map-tool-btn"
-            :class="{ active: currentTool === 'pan' }"
-            @click="currentTool = 'pan'"
-            title="漫游视角"
-          >
-            ✋ 漫游
-          </button>
+          <button class="map-tool-btn" :class="{ active: currentTool === 'brush' }" @click="currentTool = 'brush'">🖌️ 笔刷</button>
+          <button class="map-tool-btn" :class="{ active: currentTool === 'eraser' }" @click="currentTool = 'eraser'">🧹 橡皮</button>
+          <button class="map-tool-btn" :class="{ active: currentTool === 'stamp' }" @click="currentTool = 'stamp'">📍 放置地标</button>
+          <button class="map-tool-btn" :class="{ active: currentTool === 'route' }" @click="currentTool = 'route'">🚩 绘制路线</button>
+          <button class="map-tool-btn" :class="{ active: currentTool === 'pan' }" @click="currentTool = 'pan'">✋ 漫游</button>
         </div>
 
         <div v-if="currentTool === 'brush'" class="tool-group tool-sub">
@@ -111,17 +76,17 @@
       <template v-else>
         <div class="tool-group">
           <button class="map-tool-btn sci-btn" :class="{ active: autoRotate3D }" @click="toggleAutoRotate">
-            {{ autoRotate3D ? '⏸️ 暂停自转' : '▶️ 宇宙自转' }}
+            {{ autoRotate3D ? '⏸️ 暂停旋转' : '▶️ 宇宙推演' }}
           </button>
-          <button class="map-tool-btn sci-btn" @click="resetCamera3D" title="重置视角">
-            🎯 全景俯瞰
+          <button class="map-tool-btn sci-btn" @click="resetCamera3D">
+            🎯 居中全景
           </button>
-          <button class="map-tool-btn sci-btn glow-purple" @click="focusCurrentVolumeStar" title="聚焦第二卷当前天璇星">
-            ⭐ 锁定当前：第二卷（梵净山）
+          <button class="map-tool-btn sci-btn glow-purple" @click="focusNodeByName('梵净山·落水寨')">
+            ⭐ 锁定第二卷：梵净山
           </button>
         </div>
         <div class="tool-group map-actions-right">
-          <span class="galaxy-tip">🌌 3D 宇宙全景 · 左键拖拽翻转 / 滚轮缩放 / 点击星球锁定密档</span>
+          <span class="galaxy-tip">🌌 NEST-DRAMA 3D 角色星丛 · 拖拽旋转 / 滚轮缩放 / 点击星球锁定实体</span>
         </div>
       </template>
     </div>
@@ -178,63 +143,55 @@
       </div>
     </div>
 
-    <!-- 3D 宇宙天体星系视口 (Three.js WebGL) -->
+    <!-- 3D NEST-DRAMA 原生星丛天体视口 (Three.js WebGL) -->
     <div v-show="viewMode === '3d'" class="worldmap-3d-viewport">
       <div ref="threeCanvasRef" class="three-container"></div>
 
-      <!-- 底部星系导航罗盘 HUD -->
+      <!-- 底部星系过滤与快速定位 HUD -->
       <div class="galaxy-bottom-hud">
-        <div class="hud-cluster-title">🌌 华夏北斗龙脊天体图谱 (THE NORTH DIPPER MATRIX)</div>
+        <div class="hud-cluster-title">🌌 NEST-DRAMA 3D 角色星系推演场 (3D STAR CLUSTER)</div>
         <div class="hud-star-buttons">
           <button
-            v-for="p in sevenStarsPlanets"
-            :key="p.id"
+            v-for="cat in categoryList"
+            :key="cat.type"
             class="hud-star-pill"
-            :class="{ active: selectedPlanet?.id === p.id, current: p.id === 'star2' }"
-            @click="focusPlanetById(p.id)"
+            :class="{ active: activeCategory === cat.type }"
+            @click="filterCategory(cat.type)"
           >
-            <span class="pill-dot" :style="{ background: p.hexColor, boxShadow: `0 0 8px ${p.hexColor}` }"></span>
-            <span class="pill-name">{{ p.starName.split(' ')[1] || p.starName }}</span>
-            <span class="pill-loc">{{ p.name.split('·')[0] }}</span>
+            <span class="pill-dot" :style="{ background: cat.color, boxShadow: `0 0 8px ${cat.color}` }"></span>
+            <span class="pill-name">{{ cat.name }}</span>
+            <span class="pill-loc">{{ cat.count }}个节点</span>
           </button>
         </div>
       </div>
 
       <!-- 星球详情信息浮层 (HUD) -->
       <transition name="fade">
-        <div v-if="selectedPlanet" class="planet-dossier-card">
-          <div class="card-header" :style="{ borderBottomColor: selectedPlanet.hexColor }">
-            <span class="star-badge" :style="{ background: selectedPlanet.hexColor }">{{ selectedPlanet.starName }}</span>
-            <h3 class="planet-title">{{ selectedPlanet.name }}</h3>
-            <button class="close-card-btn" @click="selectedPlanet = null">×</button>
+        <div v-if="selectedNode" class="planet-dossier-card">
+          <div class="card-header" :style="{ borderBottomColor: selectedNode.colorHex }">
+            <span class="star-badge" :style="{ background: selectedNode.colorHex }">{{ selectedNode.category }}</span>
+            <h3 class="planet-title">{{ selectedNode.name }}</h3>
+            <button class="close-card-btn" @click="selectedNode = null">×</button>
           </div>
           <div class="card-body">
             <div class="dossier-row">
-              <span class="label">📍 地理位置：</span>
-              <span class="val">{{ selectedPlanet.location }}</span>
+              <span class="label">🏷️ 角色身份：</span>
+              <span class="val highlight" :style="{ color: selectedNode.colorHex }">{{ selectedNode.role }}</span>
             </div>
             <div class="dossier-row">
-              <span class="label">📖 对应分卷：</span>
-              <span class="val highlight" :style="{ color: selectedPlanet.hexColor }">{{ selectedPlanet.volume }}</span>
+              <span class="label">📍 所属阵营：</span>
+              <span class="val">{{ selectedNode.faction }}</span>
             </div>
             <div class="dossier-row">
-              <span class="label">🌐 经纬坐标：</span>
-              <span class="val mono">{{ selectedPlanet.coords[0] }}°E, {{ selectedPlanet.coords[1] }}°N</span>
-            </div>
-            <div class="dossier-row">
-              <span class="label">🏯 核心奇观：</span>
-              <span class="val">{{ selectedPlanet.marvel }}</span>
-            </div>
-            <div class="dossier-row">
-              <span class="label">💀 致命威胁：</span>
-              <span class="val danger">{{ selectedPlanet.hazard }}</span>
+              <span class="label">💫 轨道参数：</span>
+              <span class="val mono">半径 {{ selectedNode.orbitRadius.toFixed(1) }} AU / 倾角 {{ (selectedNode.tiltX * 57.3).toFixed(1) }}°</span>
             </div>
             <div class="dossier-desc">
-              {{ selectedPlanet.desc }}
+              {{ selectedNode.desc }}
             </div>
             <div class="dossier-actions">
-              <button class="dossier-btn" @click="focusPlanetById(selectedPlanet.id)">
-                🚀 环绕观察此星
+              <button class="dossier-btn" @click="focusNode(selectedNode)">
+                🚀 锁定此节点
               </button>
             </div>
           </div>
@@ -285,172 +242,416 @@ const mapWrapperRef = ref<HTMLDivElement | null>(null);
 const drawingCanvasRef = ref<HTMLCanvasElement | null>(null);
 const routeCanvasRef = ref<HTMLCanvasElement | null>(null);
 
-// ─── 3D 宇宙星系数据 ─────────────────────────────────────────────────────
+// ─── 3D NEST-DRAMA 星丛数据结构 ──────────────────────────────────────────
 const threeCanvasRef = ref<HTMLDivElement | null>(null);
 const autoRotate3D = ref(true);
 
-interface PlanetData {
+interface DramaNode {
   id: string;
   name: string;
-  starName: string;
-  volume: string;
-  location: string;
-  coords: [number, number];
+  category: '主角团' | '市井对手' | '湘南遗迹' | '黔东天坑' | '七大星位';
+  role: string;
+  faction: string;
   color: number;
-  hexColor: string;
+  colorHex: string;
   size: number;
-  position: [number, number, number];
-  marvel: string;
-  hazard: string;
+  orbitRadius: number;
+  speed: number;
+  angle: number;
+  tiltX: number;
+  tiltY: number;
+  tiltZ: number;
   desc: string;
-  satellites?: { name: string; color: number; dist: number; speed: number; }[];
 }
 
-const sevenStarsPlanets: PlanetData[] = [
+const dramaNodes: DramaNode[] = [
+  // 核心主角团 (内圈高亮轨道)
   {
-    id: 'core',
-    name: '长沙 · 走马楼大本营',
-    starName: '🏮 核心始发枢纽',
-    volume: '故事起源 / 楚风文化工作室',
-    location: '湖南省长沙市芙蓉区走马楼巷',
-    coords: [112.977, 28.190],
-    color: 0xffaa00,
-    hexColor: '#ffaa00',
-    size: 2.8,
-    position: [0, 0, 0],
-    marvel: '楚风文化工作室、2004时代市井、线索中枢',
-    hazard: '贾老板等黑恶同行竞争与阴谋刺探',
-    desc: '杨涛、胖子与刘菲的大本营，承接全国各地奇闻异事，所有地下探险的起点与归宿。',
-    satellites: [
-      { name: '杨涛 (主编)', color: 0x64b5f6, dist: 4.5, speed: 0.02 },
-      { name: '胖子 (武装)', color: 0xffb74d, dist: 6.0, speed: 0.015 },
-      { name: '刘菲 (后勤)', color: 0xf06292, dist: 7.5, speed: 0.01 }
-    ]
+    id: 'yt',
+    name: '杨涛',
+    category: '主角团',
+    role: '楚风文化主编 / 工科智囊',
+    faction: '走马楼大本营',
+    color: 0x64b5f6,
+    colorHex: '#64b5f6',
+    size: 1.4,
+    orbitRadius: 10,
+    speed: 0.008,
+    angle: 0.2,
+    tiltX: 0.3,
+    tiltY: 0.1,
+    tiltZ: 0.2,
+    desc: '故事第一人称主角。24岁，精通物理力学、周易八卦与工程密码学，冷静睿智。'
   },
   {
-    id: 'star1',
-    name: '湖南郴州 · 骑田岭',
-    starName: '⭐ 天枢星',
-    volume: '第一卷：湘南溶洞 (已通关)',
-    location: '湖南省郴州市苏仙区骑田岭深山712矿区',
-    coords: [112.905, 25.639],
+    id: 'pz',
+    name: '胖子 · 邓杰',
+    category: '主角团',
+    role: '发小兄弟 / 武力坦克',
+    faction: '走马楼大本营',
+    color: 0xffb74d,
+    colorHex: '#ffb74d',
+    size: 1.6,
+    orbitRadius: 13,
+    speed: 0.006,
+    angle: 1.8,
+    tiltX: -0.4,
+    tiltY: 0.5,
+    tiltZ: -0.2,
+    desc: '200斤体格，精通近身搏击，讲江湖义气，爱财嘴碎但绝不掉链子。'
+  },
+  {
+    id: 'lf',
+    name: '刘菲',
+    category: '主角团',
+    role: '工作室前台 / 后勤管家',
+    faction: '走马楼大本营',
+    color: 0xf06292,
+    colorHex: '#f06292',
+    size: 1.2,
+    orbitRadius: 16,
+    speed: 0.005,
+    angle: 3.4,
+    tiltX: 0.5,
+    tiltY: -0.3,
+    tiltZ: 0.4,
+    desc: '长沙本地大学生，负责整理稿件、接听读者热线与账目核算，工作室的现实烟火锚点。'
+  },
+
+  // 长沙市井对手与帮手 (中内圈)
+  {
+    id: 'jtm',
+    name: '贾天明 (贾秃子)',
+    category: '市井对手',
+    role: '博雅书业老板 / 垄断书商',
+    faction: '长沙出版恶霸',
+    color: 0xe57373,
+    colorHex: '#e57373',
+    size: 1.3,
+    orbitRadius: 20,
+    speed: -0.004,
+    angle: 0.8,
+    tiltX: -0.6,
+    tiltY: 0.2,
+    tiltZ: 0.5,
+    desc: '开桑塔纳2000的大书商，妄图低价吞并楚风文化，被两万现钞当街打脸后暗中伺机报复。'
+  },
+  {
+    id: 'hp',
+    name: '黑皮哥',
+    category: '主角团',
+    role: '南门口汽修厂大哥',
+    faction: '胖子发小铁哥们',
+    color: 0x4dd0e1,
+    colorHex: '#4dd0e1',
+    size: 1.3,
+    orbitRadius: 22,
+    speed: 0.005,
+    angle: 4.5,
+    tiltX: 0.2,
+    tiltY: 0.7,
+    tiltZ: -0.4,
+    desc: '南门口汽修厂硬茬，受胖子长途电话委托，带十几个弟兄在走马楼关门暴打贾秃子。'
+  },
+
+  // 第一卷湘南溶洞遗迹 (中圈)
+  {
+    id: 'lz',
+    name: '周表叔',
+    category: '湘南遗迹',
+    role: '郴州老矿区工程承包商',
+    faction: '湘南矿山',
+    color: 0xa1887f,
+    colorHex: '#a1887f',
+    size: 1.2,
+    orbitRadius: 25,
+    speed: 0.003,
+    angle: 2.2,
+    tiltX: 0.8,
+    tiltY: -0.4,
+    tiltZ: 0.1,
+    desc: '胖子表叔，因风钻打穿老水泥封门连通地下黑空洞，邀请主角团前往勘察。'
+  },
+  {
+    id: 'ljz',
+    name: '刘瘸子',
+    category: '湘南遗迹',
+    role: '郴州黑矿头目',
+    faction: '湘南地头蛇',
+    color: 0xff8a65,
+    colorHex: '#ff8a65',
+    size: 1.2,
+    orbitRadius: 28,
+    speed: -0.003,
+    angle: 5.1,
+    tiltX: -0.3,
+    tiltY: -0.6,
+    tiltZ: 0.6,
+    desc: '开黑矿企图独占地下矿脉，身陷虫窟被杨涛胖子救出后，仗义拿出4万块感谢费。'
+  },
+  {
+    id: 'cjg',
+    name: '陈建国',
+    category: '湘南遗迹',
+    role: '1977地质七分队队长',
+    faction: '历史科考队',
+    color: 0x90a4ae,
+    colorHex: '#90a4ae',
+    size: 1.1,
+    orbitRadius: 30,
+    speed: 0.002,
+    angle: 1.1,
+    tiltX: 0.4,
+    tiltY: 0.8,
+    tiltZ: -0.5,
+    desc: '绝笔日记作者，揭开70年代科考队因贪念与致幻花在九层木楼全军覆没的真相。'
+  },
+  {
+    id: 'slc',
+    name: '石脸虫',
+    category: '湘南遗迹',
+    role: '背生扭曲人脸剧毒古生物',
+    faction: '地下盲谷凶煞',
+    color: 0xef5350,
+    colorHex: '#ef5350',
+    size: 1.0,
+    orbitRadius: 32,
+    speed: 0.004,
+    angle: 3.9,
+    tiltX: -0.7,
+    tiltY: 0.1,
+    tiltZ: -0.3,
+    desc: '白墙密布的肉食人面毒虫，四瓣裂口，对体温与强光极度敏感。'
+  },
+  {
+    id: 'slg',
+    name: '水龙骨水车',
+    category: '湘南遗迹',
+    role: '暗河驱动青铜齿轮组',
+    faction: '先秦地下工巧',
+    color: 0x81c784,
+    colorHex: '#81c784',
+    size: 1.1,
+    orbitRadius: 34,
+    speed: -0.002,
+    angle: 0.5,
+    tiltX: 0.6,
+    tiltY: -0.5,
+    tiltZ: 0.3,
+    desc: '利用暗河落差驱动的千斤石门升降机械，连通40米螺旋石阶。'
+  },
+
+  // 第二卷黔东天坑关键实体 (中外圈)
+  {
+    id: 'jp',
+    name: '军绿吉普212',
+    category: '黔东天坑',
+    role: '退役四驱硬汉座驾',
+    faction: '主角团装备',
+    color: 0x4caf50,
+    colorHex: '#4caf50',
+    size: 1.4,
+    orbitRadius: 37,
+    speed: 0.003,
+    angle: 4.8,
+    tiltX: -0.5,
+    tiltY: 0.6,
+    tiltZ: -0.1,
+    desc: '花两万现金全款拿下的部队退役吉普，加装20L防爆铁油桶与钢丝绞盘，自驾出征贵州。'
+  },
+  {
+    id: 'mb',
+    name: '夜郎青铜古匙',
+    category: '黔东天坑',
+    role: '镂空透雕双头水虺信物',
+    faction: '古夜郎秘宝',
+    color: 0xffd54f,
+    colorHex: '#ffd54f',
+    size: 1.2,
+    orbitRadius: 39,
+    speed: 0.0025,
+    angle: 2.7,
+    tiltX: 0.3,
+    tiltY: -0.7,
+    tiltZ: 0.4,
+    desc: '郴州地摊木杯热开水烫化蜂蜡后脱落的古夜郎钥匙，与第二座悬空水月楼暗槽吻合。'
+  },
+  {
+    id: 'gh',
+    name: '神秘寄信人',
+    category: '黔东天坑',
+    role: '“故人之后” / 密信引路人',
+    faction: '未知隐秘势力',
+    color: 0xce93d8,
+    colorHex: '#ce93d8',
+    size: 1.3,
+    orbitRadius: 42,
+    speed: -0.002,
+    angle: 1.5,
+    tiltX: -0.8,
+    tiltY: -0.2,
+    tiltZ: 0.7,
+    desc: '清晨在门缝塞进朱砂蜡封摩斯密信的神秘高手，掌握七大古楼全景坐标。'
+  },
+  {
+    id: 'fjs',
+    name: '梵净山·落水寨',
+    category: '黔东天坑',
+    role: '第二卷千米天坑绝境',
+    faction: '天璇星位',
+    color: 0xab47bc,
+    colorHex: '#ab47bc',
+    size: 1.7,
+    orbitRadius: 45,
+    speed: 0.0018,
+    angle: 3.1,
+    tiltX: 0.4,
+    tiltY: 0.5,
+    tiltZ: -0.6,
+    desc: '贵州铜仁梵净山西麓原始保护区深处，藏有四根青铜巨索倒悬的九层水月楼。'
+  },
+
+  // 华夏北斗七星总阵列 (外层宏观轨道)
+  {
+    id: 'star1_node',
+    name: '天枢 · 郴州骑田岭',
+    category: '七大星位',
+    role: '第一卷已通关',
+    faction: '北斗龙脊',
     color: 0x00e5ff,
-    hexColor: '#00e5ff',
-    size: 2.0,
-    position: [16, -6, 8],
-    marvel: '712废弃矿道、40米螺旋石筒、地下九层木楼',
-    hazard: '石脸虫、水龙骨致幻花、地下暗河水脉决堤',
-    desc: '第一座走马楼（天枢木楼）沉埋之地，已被声波共振暗河大暴发冲垮，带回6万酬金与夜郎木杯。',
-    satellites: [
-      { name: '712地质队遗物', color: 0x80deea, dist: 3.5, speed: 0.03 }
-    ]
+    colorHex: '#00e5ff',
+    size: 1.5,
+    orbitRadius: 48,
+    speed: 0.0015,
+    angle: 0.3,
+    tiltX: 0.6,
+    tiltY: 0.3,
+    tiltZ: 0.2,
+    desc: '北斗第一星：712废弃矿道、40米螺旋石筒与地下九层木楼。'
   },
   {
-    id: 'star2',
-    name: '贵州铜仁 · 梵净山',
-    starName: '⭐ 天璇星 (🔥 当前征途)',
-    volume: '第二卷：黔东天坑 (正在进行)',
-    location: '贵州省铜仁地区梵净山西麓落水寨',
-    coords: [108.694, 27.915],
+    id: 'star2_node',
+    name: '天璇 · 贵州梵净山',
+    category: '七大星位',
+    role: '第二卷正在进行',
+    faction: '北斗龙脊',
     color: 0xba68c8,
-    hexColor: '#ba68c8',
-    size: 2.3,
-    position: [-14, 10, 20],
-    marvel: '千米垂直绝壁天坑、四根青铜玄铁索倒悬九层水月楼',
-    hazard: '深潭盲眼水鳞蟒、水银重力天平失衡、突发高山暴雨山洪',
-    desc: '第二座走马楼（天璇倒悬水月楼）。凭借门缝下的三重复合摩斯密信破译而来，已购置军绿吉普212整装出征！',
-    satellites: [
-      { name: '军绿吉普212', color: 0x81c784, dist: 3.8, speed: 0.025 },
-      { name: '夜郎青铜古匙', color: 0xffd54f, dist: 5.2, speed: 0.018 }
-    ]
+    colorHex: '#ba68c8',
+    size: 1.6,
+    orbitRadius: 51,
+    speed: 0.0013,
+    angle: 1.2,
+    tiltX: -0.5,
+    tiltY: 0.7,
+    tiltZ: -0.3,
+    desc: '北斗第二星：千米天坑倒悬水月楼，盲眼水鳞蟒与水银重力天平。'
   },
   {
-    id: 'star3',
-    name: '湖北宜昌 · 神农架',
-    starName: '⭐ 天玑星',
-    volume: '第三卷：华中冰窟',
-    location: '湖北省西部神农架原始林区与三峡地缝',
-    coords: [110.49, 31.74],
+    id: 'star3_node',
+    name: '天玑 · 湖北神农架',
+    category: '七大星位',
+    role: '第三卷华中冰窟',
+    faction: '北斗龙脊',
     color: 0x42a5f5,
-    hexColor: '#42a5f5',
-    size: 1.9,
-    position: [-22, 24, 10],
-    marvel: '华中屋脊万年高山地下冰洞、三峡绝壁巴人悬棺群',
-    hazard: '极寒失温陷阱、远古冷杉寄生真菌、倒悬悬棺落石',
-    desc: '第三座走马楼（天玑冰魂楼），深藏在零下二十度的地下冰川熔洞内部。'
+    colorHex: '#42a5f5',
+    size: 1.4,
+    orbitRadius: 54,
+    speed: 0.0012,
+    angle: 2.1,
+    tiltX: 0.7,
+    tiltY: -0.6,
+    tiltZ: 0.1,
+    desc: '北斗第三星：华中屋脊万年地下冰洞与三峡绝壁巴人悬棺。'
   },
   {
-    id: 'star4',
-    name: '安徽六安 · 大别山',
-    starName: '⭐ 天权星',
-    volume: '第四卷：淮上石宫 (斗勺枢纽)',
-    location: '安徽省六安市金寨县大别山天堂寨',
-    coords: [115.77, 31.12],
+    id: 'star4_node',
+    name: '天权 · 安徽大别山',
+    category: '七大星位',
+    role: '第四卷淮上石宫',
+    faction: '北斗龙脊',
     color: 0x66bb6a,
-    hexColor: '#66bb6a',
-    size: 1.9,
-    position: [8, 34, 0],
-    marvel: '白垩纪巨型花岗岩天险石窟、道家三十六洞天石室',
-    hazard: '巨型磁石矿引发的罗盘失灵与磁场幻象、翻板连环锁',
-    desc: '第四座走马楼（天权枢纽石宫），斗勺与斗柄的折角枢纽，镇守江淮龙脉分水岭。'
+    colorHex: '#66bb6a',
+    size: 1.4,
+    orbitRadius: 57,
+    speed: 0.0011,
+    angle: 3.0,
+    tiltX: -0.4,
+    tiltY: -0.4,
+    tiltZ: 0.8,
+    desc: '北斗第四星：斗勺枢纽，白垩纪花岗岩巨型石窟与天然磁场机关。'
   },
   {
-    id: 'star5',
-    name: '山东泰安 · 东岳泰山',
-    starName: '⭐ 玉衡星',
-    volume: '第五卷：东岳封禅 (斗柄首星)',
-    location: '山东省泰安市泰山傲徕峰与蒙山溶洞',
-    coords: [117.10, 36.25],
+    id: 'star5_node',
+    name: '玉衡 · 山东泰山',
+    category: '七大星位',
+    role: '第五卷东岳封禅',
+    faction: '北斗龙脊',
     color: 0xffca28,
-    hexColor: '#ffca28',
-    size: 2.0,
-    position: [22, 45, -12],
-    marvel: '始皇封禅玉简沉埋秘窟、泰山石敢当镇煞大阵',
-    hazard: '秦代青铜重弩死阵、地下水银灌注墓道',
-    desc: '第五座走马楼（玉衡青铜阙），五岳独尊之龙脊，守卫着古代封禅大典绝密信物。'
+    colorHex: '#ffca28',
+    size: 1.5,
+    orbitRadius: 60,
+    speed: 0.0010,
+    angle: 3.9,
+    tiltX: 0.8,
+    tiltY: 0.2,
+    tiltZ: -0.4,
+    desc: '北斗第五星：始皇帝封禅玉简地宫与泰山石敢当阵法。'
   },
   {
-    id: 'star6',
-    name: '河北承德 · 燕山雾灵山',
-    starName: '⭐ 开阳星',
-    volume: '第六卷：燕山要塞',
-    location: '河北省承德市兴隆县雾灵山古北口长城地底',
-    coords: [117.48, 40.60],
+    id: 'star6_node',
+    name: '开阳 · 河北燕山',
+    category: '七大星位',
+    role: '第六卷燕山要塞',
+    faction: '北斗龙脊',
     color: 0xff7043,
-    hexColor: '#ff7043',
-    size: 1.9,
-    position: [16, 58, -26],
-    marvel: '古长城绝壁地底古代军事屯兵防空要塞',
-    hazard: '火药死锁封门、地底声波侦察死角、暗箭网',
-    desc: '第六座走马楼（开阳战楼），明清两代秘密扩建的地下军事禁区。'
+    colorHex: '#ff7043',
+    size: 1.4,
+    orbitRadius: 63,
+    speed: 0.0009,
+    angle: 4.8,
+    tiltX: -0.6,
+    tiltY: 0.5,
+    tiltZ: 0.2,
+    desc: '北斗第六星：古长城绝壁地底古代军事屯兵防空要塞。'
   },
   {
-    id: 'star7',
-    name: '内蒙古赤峰 · 大兴安岭',
-    starName: '⭐ 摇光星 (终极破军)',
-    volume: '第七卷：极北龙首 (大结局)',
-    location: '内蒙古赤峰市克什克腾旗玄武岩熔岩隧道',
-    coords: [118.87, 43.26],
+    id: 'star7_node',
+    name: '摇光 · 内蒙大兴安岭',
+    category: '七大星位',
+    role: '第七卷极北龙首',
+    faction: '北斗龙脊',
     color: 0xffffff,
-    hexColor: '#ffffff',
-    size: 2.6,
-    position: [30, 74, -40],
-    marvel: '红山文化上古太阳神龙玉神坛、死火山熔岩深渊',
-    hazard: '火山地热毒气、上古地磁倒转震荡、终极宿命考验',
-    desc: '第七座走马楼（摇光总龙首）。七楼合一，解开跨越千年的华夏走马楼终极谜团！'
+    colorHex: '#ffffff',
+    size: 1.8,
+    orbitRadius: 66,
+    speed: 0.0008,
+    angle: 5.7,
+    tiltX: 0.3,
+    tiltY: -0.8,
+    tiltZ: 0.5,
+    desc: '北斗第七星：红山文化太阳神龙玉神坛与死火山熔岩隧道大结局。'
   }
 ];
 
-const selectedPlanet = ref<PlanetData | null>(null);
+const categoryList = [
+  { type: 'all', name: '全部星丛', color: '#90caf9', count: dramaNodes.length },
+  { type: '主角团', name: '走马楼主角团', color: '#64b5f6', count: 4 },
+  { type: '市井对手', name: '市井势力', color: '#e57373', count: 1 },
+  { type: '湘南遗迹', name: '第一卷遗存', color: '#81c784', count: 5 },
+  { type: '黔东天坑', name: '第二卷当前', color: '#ab47bc', count: 4 },
+  { type: '七大星位', name: '北斗大阵', color: '#ffd700', count: 7 }
+];
+const activeCategory = ref('all');
+
+const selectedNode = ref<DramaNode | null>(null);
 
 let scene: THREE.Scene | null = null;
 let camera: THREE.PerspectiveCamera | null = null;
 let renderer: THREE.WebGLRenderer | null = null;
 let animFrameId = 0;
-let planetMeshes: THREE.Mesh[] = [];
-let satelliteGroups: { group: THREE.Group; speed: number; }[] = [];
+let nodeMeshMap: Map<string, { mesh: THREE.Mesh; orbitGroup: THREE.Group; node: DramaNode }> = new Map();
 let targetCameraPos: THREE.Vector3 | null = null;
-let targetLookAt: THREE.Vector3 = new THREE.Vector3(0, 20, 0);
+let targetLookAt: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
 
 // ─── 切换模式 ─────────────────────────────────────────────────────────────
 function switchViewMode(mode: '2d' | '3d') {
@@ -464,65 +665,67 @@ function switchViewMode(mode: '2d' | '3d') {
   }
 }
 
-// ─── 动态生成 3D 悬浮文字标签材质 ──────────────────────────────────────────
-function createTextSprite(text: string, color = '#ffffff', subText = '') {
+// ─── 动态生成 3D 悬浮极简科技文字标签 ─────────────────────────────────────────
+function createHoloBadgeSprite(name: string, role: string, colorHex: string) {
   const canvas = document.createElement('canvas');
-  canvas.width = 384;
-  canvas.height = 128;
+  canvas.width = 256;
+  canvas.height = 80;
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.Sprite();
 
-  // 半透明深空渐变背景框
-  ctx.fillStyle = 'rgba(10, 15, 30, 0.75)';
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
+  // 极简全息深蓝暗底
+  ctx.fillStyle = 'rgba(6, 10, 24, 0.85)';
+  ctx.strokeStyle = colorHex;
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.roundRect(8, 8, 368, 112, 16);
+  ctx.roundRect(4, 4, 248, 72, 8);
   ctx.fill();
   ctx.stroke();
 
-  // 主标题
+  // 节点名称
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 30px sans-serif';
+  ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(text, 192, 54);
+  ctx.fillText(name, 128, 34);
 
-  // 副标题
-  if (subText) {
-    ctx.fillStyle = color;
-    ctx.font = '20px monospace';
-    ctx.fillText(subText, 192, 92);
-  }
+  // 身份副标
+  ctx.fillStyle = colorHex;
+  ctx.font = '14px monospace';
+  ctx.fillText(role, 128, 60);
 
   const texture = new THREE.CanvasTexture(canvas);
-  const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+  const spriteMat = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false
+  });
   const sprite = new THREE.Sprite(spriteMat);
-  sprite.scale.set(10, 3.3, 1);
+  sprite.scale.set(6, 1.88, 1);
   return sprite;
 }
 
-// ─── 动态发光光晕粒子贴图 ─────────────────────────────────────────────────
-function createGlowTexture(colorHex: string) {
+// ─── 动态发光太阳日冕贴图 ─────────────────────────────────────────────────
+function createSunGlowTexture() {
   const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
+  canvas.width = 256;
+  canvas.height = 256;
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.Texture();
 
-  const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gradient.addColorStop(0, colorHex);
-  gradient.addColorStop(0.3, colorHex);
-  gradient.addColorStop(0.7, 'rgba(0,0,0,0.4)');
-  gradient.addColorStop(1, 'rgba(0,0,0,0)');
+  const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gradient.addColorStop(0, 'rgba(255, 200, 50, 1.0)');
+  gradient.addColorStop(0.25, 'rgba(255, 140, 0, 0.8)');
+  gradient.addColorStop(0.6, 'rgba(255, 60, 0, 0.25)');
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 128, 128);
+  ctx.fillRect(0, 0, 256, 256);
 
   const texture = new THREE.CanvasTexture(canvas);
   return texture;
 }
 
-// ─── 初始化顶级 3D 宇宙星系 ───────────────────────────────────────────────
+// ─── 初始化 NEST-DRAMA 原生 3D 星丛场景 ────────────────────────────────────
 function initThreeScene() {
   if (!threeCanvasRef.value) return;
   cleanupThreeScene();
@@ -531,214 +734,139 @@ function initThreeScene() {
   const height = threeCanvasRef.value.clientHeight || 800;
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x04060f);
-  scene.fog = new THREE.FogExp2(0x04060f, 0.005);
+  scene.background = new THREE.Color(0x020308);
 
   camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(0, 35, 95);
-  camera.lookAt(0, 20, 0);
-  targetLookAt = new THREE.Vector3(0, 20, 0);
+  camera.position.set(0, 40, 110);
+  camera.lookAt(0, 0, 0);
+  targetLookAt = new THREE.Vector3(0, 0, 0);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setSize(width, height);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.3;
+  renderer.toneMappingExposure = 1.4;
   threeCanvasRef.value.appendChild(renderer.domElement);
 
-  // 1. 璀璨星空背景粒子 + 彩色星云雾
+  // 1. 深空稀疏星点
   const starGeo = new THREE.BufferGeometry();
-  const starCount = 5000;
+  const starCount = 3000;
   const starPos = new Float32Array(starCount * 3);
-  const starColors = new Float32Array(starCount * 3);
-  const colorPool = [
-    new THREE.Color(0x64b5f6), new THREE.Color(0xba68c8), new THREE.Color(0xffd54f), new THREE.Color(0xffffff)
-  ];
-
-  for (let i = 0; i < starCount; i++) {
-    starPos[i * 3] = (Math.random() - 0.5) * 600;
-    starPos[i * 3 + 1] = (Math.random() - 0.5) * 600;
-    starPos[i * 3 + 2] = (Math.random() - 0.5) * 600;
-    const c = colorPool[Math.floor(Math.random() * colorPool.length)];
-    starColors[i * 3] = c.r;
-    starColors[i * 3 + 1] = c.g;
-    starColors[i * 3 + 2] = c.b;
+  for (let i = 0; i < starCount * 3; i++) {
+    starPos[i] = (Math.random() - 0.5) * 800;
   }
   starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-  starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
-
-  const starMat = new THREE.PointsMaterial({
-    size: 1.2,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.85,
-    blending: THREE.AdditiveBlending
-  });
+  const starMat = new THREE.PointsMaterial({ color: 0x7986cb, size: 1.0, transparent: true, opacity: 0.7 });
   const starField = new THREE.Points(starGeo, starMat);
   scene.add(starField);
 
-  // 2. 空间引力网格地板 (Cyberpunk Grid)
-  const gridHelper = new THREE.GridHelper(180, 36, 0x3949ab, 0x1a237e);
-  gridHelper.position.y = -15;
-  (gridHelper.material as THREE.Material).transparent = true;
-  (gridHelper.material as THREE.Material).opacity = 0.25;
-  scene.add(gridHelper);
-
-  // 3. 高级光源配置
-  const ambientLight = new THREE.AmbientLight(0x283593, 2.0);
+  // 2. 环境光
+  const ambientLight = new THREE.AmbientLight(0x303f9f, 2.5);
   scene.add(ambientLight);
 
-  const sunLight = new THREE.PointLight(0xffb74d, 4.0, 150);
-  sunLight.position.set(0, 0, 0);
-  scene.add(sunLight);
+  // 3. 中心引力金乌恒星 (【走马楼故事推演总枢】)
+  const sunGroup = new THREE.Group();
+  scene.add(sunGroup);
 
-  // 4. 构建北斗七星高颜值发光天体
-  planetMeshes = [];
-  satelliteGroups = [];
-  const pointsForLine: THREE.Vector3[] = [];
+  const sunGeo = new THREE.SphereGeometry(3.5, 32, 32);
+  const sunMat = new THREE.MeshStandardMaterial({
+    color: 0xffd54f,
+    emissive: 0xff8f00,
+    emissiveIntensity: 1.8,
+    roughness: 0.1
+  });
+  const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+  sunGroup.add(sunMesh);
 
-  sevenStarsPlanets.forEach((p) => {
-    const planetGroup = new THREE.Group();
-    planetGroup.position.set(...p.position);
-    scene?.add(planetGroup);
+  // 恒星耀斑发光日冕
+  const sunGlowMat = new THREE.SpriteMaterial({
+    map: createSunGlowTexture(),
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    opacity: 0.95
+  });
+  const sunGlowSprite = new THREE.Sprite(sunGlowMat);
+  sunGlowSprite.scale.set(18, 18, 1);
+  sunGroup.add(sunGlowSprite);
 
-    // 行星本体 (带发光纹理与菲涅尔边缘光)
-    const geo = new THREE.SphereGeometry(p.size, 32, 32);
-    const mat = new THREE.MeshStandardMaterial({
-      color: p.color,
-      emissive: p.color,
-      emissiveIntensity: p.id === 'core' ? 0.9 : (p.id === 'star2' ? 0.8 : 0.45),
-      roughness: 0.2,
-      metalness: 0.3
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.userData = p;
-    planetGroup.add(mesh);
-    planetMeshes.push(mesh);
+  // 恒星中心光标
+  const sunBadge = createHoloBadgeSprite('《走马楼笔记》', '世界推演总枢', '#ffaa00');
+  sunBadge.position.set(0, -5.2, 0);
+  sunGroup.add(sunBadge);
 
-    // 外层发光日冕光晕 (Corona Sprite)
-    const glowMat = new THREE.SpriteMaterial({
-      map: createGlowTexture(p.hexColor),
-      color: p.color,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      opacity: p.id === 'star2' ? 0.9 : 0.6
-    });
-    const glowSprite = new THREE.Sprite(glowMat);
-    glowSprite.scale.set(p.size * 4.5, p.size * 4.5, 1);
-    planetGroup.add(glowSprite);
+  const sunLight = new THREE.PointLight(0xffaa00, 5, 200);
+  sunGroup.add(sunLight);
 
-    // 全息引力光环 (Concentric Gravity Orbit)
-    const ringGeo = new THREE.RingGeometry(p.size * 1.5, p.size * 1.7, 48);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: p.color,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.5,
-      blending: THREE.AdditiveBlending
-    });
-    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-    ringMesh.rotation.x = Math.PI / 2.3;
-    planetGroup.add(ringMesh);
+  // 4. 构建三维立体多倾角轨道环 (NEST-DRAMA 陀螺仪多能级轨道网)
+  nodeMeshMap.clear();
 
-    // 垂直地面全息定位激光束 (Vertical Holographic Laser Beam)
-    const beamHeight = p.position[1] - (-15);
-    const beamGeo = new THREE.CylinderGeometry(0.08, 0.08, beamHeight, 16);
-    const beamMat = new THREE.MeshBasicMaterial({
-      color: p.color,
+  dramaNodes.forEach((node) => {
+    // 每一个实体拥有自己独立的三维空间倾角轨道组
+    const orbitGroup = new THREE.Group();
+    orbitGroup.rotation.x = node.tiltX;
+    orbitGroup.rotation.y = node.tiltY;
+    orbitGroup.rotation.z = node.tiltZ;
+    scene?.add(orbitGroup);
+
+    // 细发光立体轨道线 (3D Elliptical Orbit Wireframe)
+    const curve = new THREE.EllipseCurve(0, 0, node.orbitRadius, node.orbitRadius * 0.95, 0, 2 * Math.PI, false, 0);
+    const points = curve.getPoints(128);
+    const orbitGeo = new THREE.BufferGeometry().setFromPoints(points.map(p => new THREE.Vector3(p.x, 0, p.y)));
+    const orbitMat = new THREE.LineBasicMaterial({
+      color: 0x5c6bc0,
       transparent: true,
       opacity: 0.35,
       blending: THREE.AdditiveBlending
     });
-    const beamMesh = new THREE.Mesh(beamGeo, beamMat);
-    beamMesh.position.y = -beamHeight / 2;
-    planetGroup.add(beamMesh);
+    const orbitLine = new THREE.Line(orbitGeo, orbitMat);
+    orbitGroup.add(orbitLine);
 
-    // 3D 悬浮全息地标徽标 (Holographic Text Badge)
-    const spriteLabel = createTextSprite(
-      p.starName.split(' ')[1] || p.starName,
-      p.hexColor,
-      p.name
-    );
-    spriteLabel.position.set(0, p.size + 4.2, 0);
-    planetGroup.add(spriteLabel);
+    // 星球本体
+    const planetGeo = new THREE.SphereGeometry(node.size, 24, 24);
+    const planetMat = new THREE.MeshStandardMaterial({
+      color: node.color,
+      emissive: node.color,
+      emissiveIntensity: 0.6,
+      metalness: 0.8,
+      roughness: 0.2
+    });
+    const planetMesh = new THREE.Mesh(planetGeo, planetMat);
+    planetMesh.userData = node;
+    orbitGroup.add(planetMesh);
 
-    // 围绕星球公转的小卫星群 (Characters / Artifact Satellites)
-    if (p.satellites && p.satellites.length > 0) {
-      p.satellites.forEach(sat => {
-        const satOrbitGroup = new THREE.Group();
-        planetGroup.add(satOrbitGroup);
+    // 全息悬浮文字小标签
+    const badgeSprite = createHoloBadgeSprite(node.name, node.role, node.colorHex);
+    badgeSprite.position.set(0, node.size + 1.8, 0);
+    planetMesh.add(badgeSprite);
 
-        const satGeo = new THREE.SphereGeometry(0.35, 16, 16);
-        const satMat = new THREE.MeshStandardMaterial({
-          color: sat.color,
-          emissive: sat.color,
-          emissiveIntensity: 0.8
-        });
-        const satMesh = new THREE.Mesh(satGeo, satMat);
-        satMesh.position.set(sat.dist, 0, 0);
-        satOrbitGroup.add(satMesh);
-
-        // 卫星轨道虚线圈
-        const orbitLineGeo = new THREE.RingGeometry(sat.dist - 0.04, sat.dist + 0.04, 64);
-        const orbitLineMat = new THREE.MeshBasicMaterial({
-          color: sat.color,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.25
-        });
-        const orbitLineMesh = new THREE.Mesh(orbitLineGeo, orbitLineMat);
-        orbitLineMesh.rotation.x = Math.PI / 2;
-        satOrbitGroup.add(orbitLineMesh);
-
-        satelliteGroups.push({ group: satOrbitGroup, speed: sat.speed });
-      });
-    }
-
-    if (p.id !== 'core') {
-      pointsForLine.push(new THREE.Vector3(...p.position));
-    }
+    nodeMeshMap.set(node.id, { mesh: planetMesh, orbitGroup, node });
   });
 
-  // 5. 华夏北斗七星发光能量星座管道 (Glowing Constellation Energy Line)
-  if (pointsForLine.length > 1) {
-    const curve = new THREE.CatmullRomCurve3(pointsForLine, false, 'catmullrom', 0.1);
-    const tubeGeo = new THREE.TubeGeometry(curve, 100, 0.25, 8, false);
-    const tubeMat = new THREE.MeshStandardMaterial({
-      color: 0xffd700,
-      emissive: 0xffaa00,
-      emissiveIntensity: 0.9,
-      roughness: 0.1,
-      metalness: 0.8,
-      transparent: true,
-      opacity: 0.85
-    });
-    const constellationTube = new THREE.Mesh(tubeGeo, tubeMat);
-    scene.add(constellationTube);
-  }
-
-  // 6. 交互监听
+  // 5. 交互设置
   setup3DInteraction();
 
-  // 7. 渲染循环
+  // 6. 渲染循环与立体星丛公转
   function animate() {
     animFrameId = requestAnimationFrame(animate);
 
     // 宇宙慢速自转
     if (autoRotate3D.value && scene && !targetCameraPos) {
-      scene.rotation.y += 0.0012;
+      scene.rotation.y += 0.001;
     }
 
-    // 卫星公转
-    satelliteGroups.forEach(item => {
-      item.group.rotation.y += item.speed;
+    // 各实体沿自身三维倾角轨道公转
+    nodeMeshMap.forEach(({ mesh, node }) => {
+      node.angle += node.speed;
+      const x = Math.cos(node.angle) * node.orbitRadius;
+      const z = Math.sin(node.angle) * (node.orbitRadius * 0.95);
+      mesh.position.set(x, 0, z);
     });
 
-    // 平滑镜头过渡插值 (Smooth Camera Lerp)
+    // 镜头平滑插值过渡
     if (targetCameraPos && camera) {
       camera.position.lerp(targetCameraPos, 0.05);
       camera.lookAt(targetLookAt);
-      if (camera.position.distanceTo(targetCameraPos) < 0.2) {
+      if (camera.position.distanceTo(targetCameraPos) < 0.3) {
         targetCameraPos = null;
       }
     }
@@ -759,7 +887,7 @@ function setup3DInteraction() {
     isDragging = true;
     prevMouseX = e.clientX;
     prevMouseY = e.clientY;
-    targetCameraPos = null; // 用户打断镜头动画
+    targetCameraPos = null;
   });
 
   window.addEventListener('mousemove', (e) => {
@@ -770,7 +898,7 @@ function setup3DInteraction() {
     prevMouseY = e.clientY;
 
     scene.rotation.y += deltaX * 0.004;
-    camera.position.y = Math.max(-10, Math.min(90, camera.position.y - deltaY * 0.12));
+    scene.rotation.x = Math.max(-0.8, Math.min(0.8, scene.rotation.x + deltaY * 0.003));
   });
 
   window.addEventListener('mouseup', () => {
@@ -779,10 +907,10 @@ function setup3DInteraction() {
 
   dom.addEventListener('wheel', (e) => {
     if (!camera) return;
-    camera.position.z = Math.max(12, Math.min(180, camera.position.z + e.deltaY * 0.06));
+    camera.position.z = Math.max(15, Math.min(220, camera.position.z + e.deltaY * 0.08));
   });
 
-  // 点击射线拾取星球
+  // 射线点击拾取
   dom.addEventListener('click', (e) => {
     if (!camera || !scene) return;
     const rect = dom.getBoundingClientRect();
@@ -793,31 +921,50 @@ function setup3DInteraction() {
 
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(planetMeshes);
 
+    const meshes: THREE.Mesh[] = [];
+    nodeMeshMap.forEach(v => meshes.push(v.mesh));
+
+    const intersects = raycaster.intersectObjects(meshes);
     if (intersects.length > 0) {
       const hit = intersects[0].object;
-      selectedPlanet.value = hit.userData as PlanetData;
-      flyToPlanet(hit.userData as PlanetData);
+      const node = hit.userData as DramaNode;
+      selectedNode.value = node;
+      focusNode(node);
     }
   });
 }
 
-function flyToPlanet(p: PlanetData) {
-  targetLookAt = new THREE.Vector3(...p.position);
+function focusNode(node: DramaNode) {
+  selectedNode.value = node;
+  const entry = nodeMeshMap.get(node.id);
+  if (!entry || !camera) return;
+
+  const worldPos = new THREE.Vector3();
+  entry.mesh.getWorldPosition(worldPos);
+
+  targetLookAt = worldPos.clone();
   targetCameraPos = new THREE.Vector3(
-    p.position[0] + (p.size * 3.5),
-    p.position[1] + (p.size * 2.0),
-    p.position[2] + (p.size * 5.5)
+    worldPos.x + 12,
+    worldPos.y + 8,
+    worldPos.z + 18
   );
 }
 
-function focusPlanetById(id: string) {
-  const p = sevenStarsPlanets.find(item => item.id === id);
-  if (p) {
-    selectedPlanet.value = p;
-    flyToPlanet(p);
-  }
+function focusNodeByName(name: string) {
+  const n = dramaNodes.find(item => item.name.includes(name));
+  if (n) focusNode(n);
+}
+
+function filterCategory(cat: string) {
+  activeCategory.value = cat;
+  nodeMeshMap.forEach(({ mesh, node }) => {
+    if (cat === 'all' || node.category === cat) {
+      mesh.visible = true;
+    } else {
+      mesh.visible = false;
+    }
+  });
 }
 
 function toggleAutoRotate() {
@@ -825,14 +972,12 @@ function toggleAutoRotate() {
 }
 
 function resetCamera3D() {
-  selectedPlanet.value = null;
-  targetLookAt = new THREE.Vector3(0, 20, 0);
-  targetCameraPos = new THREE.Vector3(0, 35, 95);
-  if (scene) scene.rotation.set(0, 0, 0);
-}
-
-function focusCurrentVolumeStar() {
-  focusPlanetById('star2');
+  selectedNode.value = null;
+  targetLookAt = new THREE.Vector3(0, 0, 0);
+  targetCameraPos = new THREE.Vector3(0, 40, 110);
+  if (scene) {
+    scene.rotation.set(0, 0, 0);
+  }
 }
 
 function cleanupThreeScene() {
@@ -1051,7 +1196,7 @@ function deleteMarker(id: string) {
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: #04060f;
+  background: #020308;
   position: relative;
   overflow: hidden;
   user-select: none;
@@ -1063,18 +1208,18 @@ function deleteMarker(id: string) {
   align-items: center;
   gap: 12px;
   padding: 8px 16px;
-  background: rgba(13, 17, 34, 0.95);
-  border-bottom: 1px solid rgba(83, 109, 254, 0.25);
+  background: rgba(8, 12, 28, 0.95);
+  border-bottom: 1px solid rgba(92, 107, 192, 0.3);
   z-index: 20;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(12px);
 }
 
 .mode-toggle-group {
-  background: #080a14;
+  background: #060814;
   padding: 3px;
   border-radius: 8px;
-  border: 1px solid rgba(123, 31, 162, 0.5);
+  border: 1px solid rgba(92, 107, 192, 0.5);
 }
 
 .mode-btn {
@@ -1083,8 +1228,8 @@ function deleteMarker(id: string) {
 }
 
 .mode-btn.galaxy-btn.active {
-  background: linear-gradient(135deg, #7b1fa2, #303f9f) !important;
-  box-shadow: 0 0 16px rgba(170, 0, 255, 0.8);
+  background: linear-gradient(135deg, #3949ab, #1e88e5) !important;
+  box-shadow: 0 0 16px rgba(30, 136, 229, 0.8);
   color: #fff !important;
 }
 
@@ -1100,9 +1245,9 @@ function deleteMarker(id: string) {
 
 .map-tool-btn {
   padding: 6px 12px;
-  background: #181d36;
+  background: #10162f;
   color: #cfd8dc;
-  border: 1px solid #2f3863;
+  border: 1px solid #283593;
   border-radius: 6px;
   font-size: 13px;
   cursor: pointer;
@@ -1110,7 +1255,7 @@ function deleteMarker(id: string) {
 }
 
 .map-tool-btn:hover {
-  background: #252e54;
+  background: #1a237e;
   border-color: #ffd700;
   color: #fff;
 }
@@ -1123,14 +1268,14 @@ function deleteMarker(id: string) {
 }
 
 .map-tool-btn.sci-btn {
-  background: #121833;
+  background: #0d122b;
   border-color: #3f51b5;
   color: #90caf9;
 }
 
 .map-tool-btn.sci-btn:hover {
-  background: #1e285a;
-  box-shadow: 0 0 10px rgba(63, 81, 181, 0.6);
+  background: #1a237e;
+  box-shadow: 0 0 12px rgba(63, 81, 181, 0.8);
 }
 
 .map-tool-btn.glow-purple {
@@ -1140,7 +1285,7 @@ function deleteMarker(id: string) {
 
 .map-tool-btn.glow-purple:hover {
   background: #4a148c;
-  box-shadow: 0 0 12px rgba(171, 71, 188, 0.8);
+  box-shadow: 0 0 14px rgba(171, 71, 188, 0.9);
 }
 
 .map-tool-btn.highlight { background: #2e7d32; color: #fff; }
@@ -1149,7 +1294,7 @@ function deleteMarker(id: string) {
 .color-picker-row {
   display: flex;
   gap: 4px;
-  background: #0f1325;
+  background: #090d1f;
   padding: 4px 8px;
   border-radius: 6px;
 }
@@ -1169,8 +1314,8 @@ function deleteMarker(id: string) {
 
 .stamp-select-btn {
   padding: 4px 8px;
-  background: #181d36;
-  border: 1px solid #2f3863;
+  background: #10162f;
+  border: 1px solid #283593;
   color: #cfd8dc;
   border-radius: 4px;
   font-size: 12px;
@@ -1187,7 +1332,7 @@ function deleteMarker(id: string) {
 
 .galaxy-tip {
   font-size: 12px;
-  color: #9fa8da;
+  color: #8c9eff;
 }
 
 /* 2D 画布视口 */
@@ -1297,7 +1442,7 @@ function deleteMarker(id: string) {
   position: relative;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at center, #080d24 0%, #03040a 100%);
+  background: radial-gradient(circle at center, #060a1c 0%, #010206 100%);
 }
 
 .three-container {
@@ -1305,7 +1450,7 @@ function deleteMarker(id: string) {
   height: 100%;
 }
 
-/* 底部全息导航药丸栏 (Bottom HUD) */
+/* 底部星系过滤 HUD */
 .galaxy-bottom-hud {
   position: absolute;
   bottom: 20px;
@@ -1315,12 +1460,12 @@ function deleteMarker(id: string) {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  background: rgba(10, 14, 30, 0.85);
-  border: 1px solid rgba(83, 109, 254, 0.4);
-  padding: 8px 16px;
+  background: rgba(8, 12, 28, 0.85);
+  border: 1px solid rgba(92, 107, 192, 0.4);
+  padding: 8px 18px;
   border-radius: 30px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(48, 63, 159, 0.3);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9), 0 0 25px rgba(48, 63, 159, 0.4);
   z-index: 25;
 }
 
@@ -1340,8 +1485,8 @@ function deleteMarker(id: string) {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  background: rgba(24, 30, 60, 0.8);
+  padding: 5px 12px;
+  background: rgba(16, 22, 48, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   color: #cfd8dc;
@@ -1361,12 +1506,7 @@ function deleteMarker(id: string) {
   background: #3949ab;
   border-color: #ffd700;
   color: #fff;
-  box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
-}
-
-.hud-star-pill.current {
-  border-color: #ab47bc;
-  box-shadow: 0 0 10px rgba(171, 71, 188, 0.6);
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.6);
 }
 
 .pill-dot {
@@ -1389,11 +1529,11 @@ function deleteMarker(id: string) {
   position: absolute;
   top: 24px;
   right: 24px;
-  width: 380px;
-  background: rgba(10, 14, 30, 0.95);
-  border: 1px solid #7b1fa2;
+  width: 360px;
+  background: rgba(8, 12, 28, 0.95);
+  border: 1px solid #3f51b5;
   border-radius: 12px;
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9), 0 0 25px rgba(170, 0, 255, 0.4);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(63, 81, 181, 0.4);
   backdrop-filter: blur(16px);
   color: #e0e0e0;
   z-index: 30;
@@ -1402,15 +1542,15 @@ function deleteMarker(id: string) {
 
 .card-header {
   padding: 14px 16px;
-  background: linear-gradient(135deg, rgba(123, 31, 162, 0.4), rgba(48, 63, 159, 0.4));
-  border-bottom: 2px solid #7b1fa2;
+  background: linear-gradient(135deg, rgba(48, 63, 159, 0.4), rgba(123, 31, 162, 0.4));
+  border-bottom: 2px solid #3f51b5;
   display: flex;
   align-items: center;
   position: relative;
 }
 
 .star-badge {
-  font-size: 12px;
+  font-size: 11px;
   color: #000;
   font-weight: bold;
   padding: 2px 8px;
@@ -1487,19 +1627,19 @@ function deleteMarker(id: string) {
 
 .dossier-btn {
   padding: 6px 14px;
-  background: linear-gradient(135deg, #7b1fa2, #303f9f);
+  background: linear-gradient(135deg, #3949ab, #1e88e5);
   color: #fff;
-  border: 1px solid #ab47bc;
+  border: 1px solid #5c6bc0;
   border-radius: 6px;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 0 10px rgba(171, 71, 188, 0.5);
+  box-shadow: 0 0 10px rgba(92, 107, 192, 0.5);
 }
 
 .dossier-btn:hover {
-  background: linear-gradient(135deg, #9c27b0, #3f51b5);
-  box-shadow: 0 0 15px rgba(171, 71, 188, 0.8);
+  background: linear-gradient(135deg, #1e88e5, #00acc1);
+  box-shadow: 0 0 15px rgba(0, 172, 193, 0.8);
   transform: scale(1.05);
 }
 
