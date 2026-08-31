@@ -319,7 +319,7 @@ export function localDiskStoragePlugin(): Plugin {
       // 注册 Vite 开发服务器中间件，直接截获 /api/storage/* 和 /api/mcp/*
       server.middlewares.use(async (req, res, next) => {
         const urlStr = req.url || '';
-        if (!urlStr.startsWith('/api/storage') && !urlStr.startsWith('/api/mcp') && !urlStr.startsWith('/api/dupian') && !urlStr.startsWith('/api/nest-drama')) {
+        if (!urlStr.startsWith('/api/storage') && !urlStr.startsWith('/api/mcp')) {
           return next();
         }
 
@@ -347,98 +347,6 @@ export function localDiskStoragePlugin(): Plugin {
           res.statusCode = statusCode;
           res.end(JSON.stringify(data));
         };
-
-        
-        // ─── 🛡️ NEST-DRAMA 毒编机检 · 零 Token 去 AI 腔 API ────────────────────────
-        const DUPIAN_BRIDGE = path.join(rootDir, 'tools', 'dupian_bridge.py');
-        const NEST_DRAMA_DIR = path.join(rootDir, 'nest-drama');
-        const NEST_MATERIALS_DIR = path.join(NEST_DRAMA_DIR, '材料');
-
-        if (pathname === '/api/dupian/diagnose' && req.method === 'POST') {
-          parseJsonBody((body) => {
-            const { spawn } = require('child_process');
-            const py = spawn('python', [DUPIAN_BRIDGE, 'diagnose']);
-            let out = '', errOut = '';
-            py.stdout.on('data', (d: any) => { out += d.toString('utf8'); });
-            py.stderr.on('data', (d: any) => { errOut += d.toString('utf8'); });
-            py.on('close', (code: number) => {
-              if (code !== 0) {
-                return sendJson({ error: errOut || '诊断脚本异常' }, 500);
-              }
-              try {
-                const resData = JSON.parse(out);
-                sendJson(resData);
-              } catch (e) {
-                sendJson({ error: '解析结果异常', raw: out }, 500);
-              }
-            });
-            py.stdin.write(JSON.stringify({ text: body.text || '' }));
-            py.stdin.end();
-          });
-          return;
-        }
-
-        if (pathname === '/api/dupian/repair' && req.method === 'POST') {
-          parseJsonBody((body) => {
-            const { spawn } = require('child_process');
-            const py = spawn('python', [DUPIAN_BRIDGE, 'repair']);
-            let out = '', errOut = '';
-            py.stdout.on('data', (d: any) => { out += d.toString('utf8'); });
-            py.stderr.on('data', (d: any) => { errOut += d.toString('utf8'); });
-            py.on('close', (code: number) => {
-              if (code !== 0) {
-                return sendJson({ error: errOut || '修复脚本异常' }, 500);
-              }
-              try {
-                const resData = JSON.parse(out);
-                sendJson(resData);
-              } catch (e) {
-                sendJson({ error: '解析结果异常', raw: out }, 500);
-              }
-            });
-            py.stdin.write(JSON.stringify({ text: body.text || '' }));
-            py.stdin.end();
-          });
-          return;
-        }
-
-        if (pathname === '/api/nest-drama/sync' && req.method === 'POST') {
-          parseJsonBody((body) => {
-            const bookTitle = body.bookTitle || '《走马楼笔记》';
-            const targetNovelDir = findNovelDir(bookTitle);
-            if (!targetNovelDir) {
-              return sendJson({ error: '未找到目标作品' }, 404);
-            }
-            const novelName = path.basename(targetNovelDir);
-            const destDir = path.join(NEST_MATERIALS_DIR, novelName);
-            ensureDir(destDir);
-
-            const copiedFiles: string[] = [];
-            for (const f of fs.readdirSync(targetNovelDir)) {
-              const srcPath = path.join(targetNovelDir, f);
-              if (fs.statSync(srcPath).isFile()) {
-                fs.copyFileSync(srcPath, path.join(destDir, f));
-                copiedFiles.push(f);
-              }
-            }
-
-            // 同步所有章节
-            const chapDir = path.join(targetNovelDir, 'chapters');
-            if (fs.existsSync(chapDir)) {
-              const destChapDir = path.join(destDir, 'chapters');
-              ensureDir(destChapDir);
-              for (const f of fs.readdirSync(chapDir)) {
-                if (f.endsWith('.txt')) {
-                  fs.copyFileSync(path.join(chapDir, f), path.join(destChapDir, f));
-                  copiedFiles.push(`chapters/${f}`);
-                }
-              }
-            }
-
-            sendJson({ success: true, count: copiedFiles.length, destDir, files: copiedFiles });
-          });
-          return;
-        }
 
         // 1. 获取所有小说列表
         if (pathname === '/api/storage/novels' && req.method === 'GET') {

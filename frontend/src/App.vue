@@ -30,7 +30,6 @@
         @rename-chapter="onRenameChapter"
         @rename-volume="onRenameVolume"
         @open-character-modal="isCharacterModalOpen = true"
-        @open-nest-drama="isNestDramaOpen = true"
         @open-foreshadow-modal="isForeshadowModalOpen = true"
         @open-mcp-modal="isMcpModalOpen = true"
         @open-create-book-modal="isCreateBookModalOpen = true"
@@ -95,13 +94,6 @@
       @sync-tomato="onSyncTomato"
       @sync-mcp-book="onSyncMcpBook"
       @sync-live-data="onSyncLiveData"
-    />
-
-        <!-- 🌌 NEST-DRAMA 群像剧情推演沙盒控制台大模态框 -->
-    <NestDramaModal
-      :is-open="isNestDramaOpen"
-      :book-title="currentBook?.title"
-      @close="isNestDramaOpen = false"
     />
 
     <!-- 人物卡仓库与人物逻辑梳理图大模态框 (包含绝密档案卡与关系拓扑画布) -->
@@ -196,7 +188,6 @@ import { novelApi } from './api/client';
 import type { NovelBook, Volume, Chapter, MindMapData, MindMapNode, TomatoAccountItem, OutlineScope } from './types/novel';
 
 import TitleBar from './components/TitleBar.vue';
-import NestDramaModal from './components/NestDramaModal.vue';
 import SiderPanel from './components/SiderPanel.vue';
 import NovelInfoCard from './components/NovelInfoCard.vue';
 import EditorWorkspace from './components/EditorWorkspace.vue';
