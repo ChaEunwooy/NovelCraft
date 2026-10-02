@@ -1,3 +1,8 @@
+
+function normalizeEllipsis(str) {
+  if (!str) return str;
+  return str.replace(/\u2026+/g, "......").replace(/[·•]{2,}/g, "......");
+}
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
@@ -31,7 +36,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
       try {
         const p = path.dirname(CONFIG_FILE);
         if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf8');
+        atomicWriteFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf8');
       } catch (e) {}
     }
 
@@ -81,6 +86,23 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     }
 
+        function atomicWriteFileSync(targetFile, data, options = 'utf8') {
+      ensureDir(path.dirname(targetFile));
+      const tmpPath = `${targetFile}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`;
+      try {
+        fs.writeFileSync(tmpPath, data, options);
+        try {
+          fs.renameSync(tmpPath, targetFile);
+        } catch (renameErr) {
+          fs.copyFileSync(tmpPath, targetFile);
+          try { fs.unlinkSync(tmpPath); } catch (_) {}
+        }
+      } catch (err) {
+        try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (_) {}
+        throw err;
+      }
+    }
+
     [ROOT_STORAGE, NOVELS_DIR, BACKUPS_DIR, AUTH_DIR].forEach(ensureDir);
     console.log(`[NovelCraft Server] 📂 物理数据存储根目录: ${ROOT_STORAGE}`);
 
@@ -89,7 +111,8 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
     }
 
     function findNovelDir(bookIdOrTitle) {
-      if (!fs.existsSync(NOVELS_DIR)) return null;
+      if (!fs.existsSync(NOVELS_DIR) || !bookIdOrTitle) return null;
+      const target = String(bookIdOrTitle).trim();
       const entries = fs.readdirSync(NOVELS_DIR);
       for (const name of entries) {
         const full = path.join(NOVELS_DIR, name);
@@ -99,16 +122,15 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
             try {
               const meta = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
               if (
-                meta.id === bookIdOrTitle ||
-                meta.tomatoBookId === bookIdOrTitle ||
-                meta.title === bookIdOrTitle ||
-                name === bookIdOrTitle ||
-                name.includes(bookIdOrTitle)
+                meta.id === target ||
+                meta.tomatoBookId === target ||
+                meta.title === target ||
+                name === target
               ) {
                 return full;
               }
             } catch (e) {}
-          } else if (name === bookIdOrTitle) {
+          } else if (name === target) {
             return full;
           }
         }
@@ -202,7 +224,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
       };
 
       const snapshotFile = path.join(bookBackupsDir, `${snapshotId}.json`);
-      fs.writeFileSync(snapshotFile, JSON.stringify(snapshotBundle, null, 2), 'utf8');
+      atomicWriteFileSync(snapshotFile, JSON.stringify(snapshotBundle, null, 2), 'utf8');
       lastAutoSnapshotMap[dirName] = timestamp;
 
       return {
@@ -232,14 +254,14 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
         const data = bundle.data || {};
 
         if (data.novelMeta) {
-          fs.writeFileSync(path.join(nDir, 'novel.json'), JSON.stringify(data.novelMeta, null, 2), 'utf8');
+          atomicWriteFileSync(path.join(nDir, 'novel.json'), JSON.stringify(data.novelMeta, null, 2), 'utf8');
         }
 
         const chapDir = path.join(nDir, 'chapters');
         ensureDir(chapDir);
         if (data.chapters) {
           for (const [fName, content] of Object.entries(data.chapters)) {
-            fs.writeFileSync(path.join(chapDir, fName), String(content), 'utf8');
+            atomicWriteFileSync(path.join(chapDir, fName), String(content), 'utf8');
           }
         }
 
@@ -247,7 +269,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
         ensureDir(mindDir);
         if (data.mindmaps) {
           for (const [fName, mData] of Object.entries(data.mindmaps)) {
-            fs.writeFileSync(path.join(mindDir, fName), JSON.stringify(mData, null, 2), 'utf8');
+            atomicWriteFileSync(path.join(mindDir, fName), JSON.stringify(mData, null, 2), 'utf8');
           }
         }
 
@@ -255,7 +277,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
         ensureDir(charDir);
         if (data.characters) {
           for (const [fName, cData] of Object.entries(data.characters)) {
-            fs.writeFileSync(path.join(charDir, fName), JSON.stringify(cData, null, 2), 'utf8');
+            atomicWriteFileSync(path.join(charDir, fName), JSON.stringify(cData, null, 2), 'utf8');
           }
         }
 
@@ -263,7 +285,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
         ensureDir(fDir);
         if (data.foreshadows) {
           for (const [fName, fData] of Object.entries(data.foreshadows)) {
-            fs.writeFileSync(path.join(fDir, fName), JSON.stringify(fData, null, 2), 'utf8');
+            atomicWriteFileSync(path.join(fDir, fName), JSON.stringify(fData, null, 2), 'utf8');
           }
         }
 
@@ -373,7 +395,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
       const foreshadowsPath = path.join(novelPath, 'foreshadows');
 
       [novelPath, chaptersPath, mindmapsPath, charactersPath, foreshadowsPath].forEach(ensureDir);
-      fs.writeFileSync(path.join(foreshadowsPath, 'items.json'), JSON.stringify([], null, 2), 'utf8');
+      atomicWriteFileSync(path.join(foreshadowsPath, 'items.json'), JSON.stringify([], null, 2), 'utf8');
 
       let tomatoBookId = '';
       let tomatoSyncError = null;
@@ -424,7 +446,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
 
       const firstChapFileName = '第001章 新的篇章.txt';
       const firstChapContent = `　　这里是《${cleanTitle.replace(/[《》]/g, '')}》第一章的起点，记录你的第一缕灵感与冒险...`;
-      fs.writeFileSync(path.join(chaptersPath, firstChapFileName), firstChapContent, 'utf8');
+      atomicWriteFileSync(path.join(chaptersPath, firstChapFileName), firstChapContent, 'utf8');
 
       const novelMeta = {
         id: bookId,
@@ -462,7 +484,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
         ]
       };
 
-      fs.writeFileSync(path.join(novelPath, 'novel.json'), JSON.stringify(novelMeta, null, 2), 'utf8');
+      atomicWriteFileSync(path.join(novelPath, 'novel.json'), JSON.stringify(novelMeta, null, 2), 'utf8');
 
       // 初始化全局思维导图
       const initialMindmap = {
@@ -488,9 +510,45 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
         },
         crossLinks: []
       };
-      fs.writeFileSync(path.join(mindmapsPath, 'global.json'), JSON.stringify(initialMindmap, null, 2), 'utf8');
+      atomicWriteFileSync(path.join(mindmapsPath, 'global.json'), JSON.stringify(initialMindmap, null, 2), 'utf8');
 
       res.json({ status: 'ok', book: novelMeta, tomatoBookId, tomatoSyncError });
+    });
+
+    // 2.06 删除整本本地小说 (物理移除对应文件夹，并在删除前自动做安全防误删归档)
+    app.post('/api/storage/novel/delete', (req, res) => {
+      const { bookId } = req.body;
+      if (!bookId) return res.status(400).json({ status: 'error', message: '缺少作品ID' });
+
+      const nDir = findNovelDir(bookId);
+      if (!nDir || !fs.existsSync(nDir)) {
+        return res.status(404).json({ status: 'not_found', message: '未找到指定作品的本地物理目录' });
+      }
+
+      try {
+        const dirName = path.basename(nDir);
+        const absNdir = path.resolve(nDir);
+        const absNovelsDir = path.resolve(NOVELS_DIR);
+        if (!absNdir.startsWith(absNovelsDir)) {
+          return res.status(403).json({ status: 'error', message: '非法路径，禁止越权操作' });
+        }
+
+        // 1. 安全防误删保护：删除前自动留存一份完整快照
+        try {
+          createBookSnapshot(bookId, '删除作品前自动安全快照备份');
+        } catch (backupErr) {
+          console.warn('[NovelCraft Server] 删除前快照告警:', backupErr);
+        }
+
+        // 2. 执行物理删除
+        fs.rmSync(nDir, { recursive: true, force: true });
+        console.log(`[NovelCraft Server] 🗑️ 成功将作品【${dirName}】从本地物理磁盘彻底删除！`);
+
+        return res.json({ status: 'ok', message: `作品《${dirName}》已成功从本地物理磁盘移除` });
+      } catch (err) {
+        console.error('[NovelCraft Server] 删除作品失败:', err);
+        return res.status(500).json({ status: 'error', message: `删除失败: ${err?.message || err}` });
+      }
     });
 
     // 3. 创建新分卷
@@ -516,7 +574,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
 
       meta.volumes = meta.volumes || [];
       meta.volumes.push(newVol);
-      fs.writeFileSync(jsonPath, JSON.stringify(meta, null, 2), 'utf8');
+      atomicWriteFileSync(jsonPath, JSON.stringify(meta, null, 2), 'utf8');
       res.json({ status: 'ok', volume: newVol });
     });
 
@@ -536,7 +594,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
 
       const chapDir = path.join(nDir, 'chapters');
       ensureDir(chapDir);
-      fs.writeFileSync(path.join(chapDir, fileName), initialContent, 'utf8');
+      atomicWriteFileSync(path.join(chapDir, fileName), initialContent, 'utf8');
 
       const newChap = {
         id: chapId,
@@ -562,7 +620,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
         meta.volumes[0].chapters.push(newChap);
       }
 
-      fs.writeFileSync(jsonPath, JSON.stringify(meta, null, 2), 'utf8');
+      atomicWriteFileSync(jsonPath, JSON.stringify(meta, null, 2), 'utf8');
       res.json({ status: 'ok', chapter: newChap });
     });
 
@@ -583,7 +641,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
                 const chapFile = path.join(nDir, 'chapters', chap.fileName || `${chap.title}.txt`);
                 if (fs.existsSync(chapFile)) {
                   const content = fs.readFileSync(chapFile, 'utf8');
-                  return res.json({ status: 'ok', content });
+                  return res.json({ status: 'ok', content: normalizeEllipsis(content) });
                 }
               }
             }
@@ -595,31 +653,115 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
 
     // 6. 保存章节正文
     app.post('/api/storage/chapter-file', (req, res) => {
-      const { bookId, chapterId, title, content } = req.body;
+      const { bookId, title, oldTitle, content } = req.body;
+      const chapterId = req.body.chapId || req.body.chapterId;
       const nDir = findNovelDir(bookId);
       if (!nDir) return res.status(404).json({ status: 'error', message: '未找到小说目录' });
 
       const chapDir = path.join(nDir, 'chapters');
       ensureDir(chapDir);
 
-      const cleanTitle = (title || '未命名章节').replace(/[\\/:*?"<>|]/g, '_');
-      const fileName = `${cleanTitle}.txt`;
-      const filePath = path.join(chapDir, fileName);
-
-      fs.writeFileSync(filePath, String(content || ''), 'utf8');
-
-      // 更新 novel.json
+      const safeTitle = (title || chapterId || '未命名章节').replace(/[\\/:*?"<>|]/g, '_');
+      const desiredFileName = `${safeTitle}.txt`;
       const jsonPath = path.join(nDir, 'novel.json');
+
+      let oldFileName = '';
+      let existingChapterMeta = null;
+      let nMeta = null;
+
       if (fs.existsSync(jsonPath)) {
         try {
-          const meta = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+          nMeta = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+          for (const v of nMeta.volumes || []) {
+            const foundC = v.chapters?.find(c => c.id === chapterId);
+            if (foundC) {
+              existingChapterMeta = foundC;
+              if (foundC.fileName) {
+                oldFileName = foundC.fileName;
+              }
+              break;
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 1. 若旧文件名在磁盘上不存在，优先通过前端传入的 oldTitle 查找
+      if ((!oldFileName || !fs.existsSync(path.join(chapDir, oldFileName))) && oldTitle) {
+        const safeOld = String(oldTitle).replace(/[\\/:*?"<>|]/g, '_');
+        const candidate = `${safeOld}.txt`;
+        if (fs.existsSync(path.join(chapDir, candidate))) {
+          oldFileName = candidate;
+        }
+      }
+
+      // 2. 若仍找不到，尝试通过元数据中的旧 title 查找
+      if ((!oldFileName || !fs.existsSync(path.join(chapDir, oldFileName))) && existingChapterMeta?.title) {
+        const safeMetaTitle = String(existingChapterMeta.title).replace(/[\\/:*?"<>|]/g, '_');
+        const candidate = `${safeMetaTitle}.txt`;
+        if (fs.existsSync(path.join(chapDir, candidate))) {
+          oldFileName = candidate;
+        }
+      }
+
+      // 3. 若仍找不到，尝试按章节序号前缀（如“第004章”、“第4章”）在目录下搜索唯一旧文件
+      const chapPrefixMatch = safeTitle.match(/^(第[0-9一二三四五六七八九十百千万]+章[\s_]*)/);
+      if ((!oldFileName || !fs.existsSync(path.join(chapDir, oldFileName))) && chapPrefixMatch) {
+        const prefix = chapPrefixMatch[1];
+        const allFiles = fs.readdirSync(chapDir).filter(f => f.endsWith('.txt'));
+        const matchingFiles = allFiles.filter(f => f.startsWith(prefix));
+        if (matchingFiles.length > 0) {
+          const prevFile = matchingFiles.find(f => f !== desiredFileName) || matchingFiles[0];
+          if (prevFile) {
+            oldFileName = prevFile;
+          }
+        }
+      }
+
+      // 4. 执行无损物理重命名
+      if (oldFileName && oldFileName !== desiredFileName && fs.existsSync(path.join(chapDir, oldFileName))) {
+        try {
+          if (fs.existsSync(path.join(chapDir, desiredFileName))) {
+            fs.unlinkSync(path.join(chapDir, oldFileName));
+            console.log(`[Storage] 🗑️ 目标文件已存在，已清理旧物理文件【${oldFileName}】！`);
+          } else {
+            fs.renameSync(path.join(chapDir, oldFileName), path.join(chapDir, desiredFileName));
+            console.log(`[Storage] 📝 成功将物理文件【${oldFileName}】重命名为【${desiredFileName}】！`);
+          }
+        } catch (err) {
+          console.error('[Storage] 重命名物理文件失败:', err);
+        }
+      }
+
+      // 5. 彻底清除该章节下残留的历史碎片草稿（例如打字中间状态的半截文件）
+      if (chapPrefixMatch) {
+        try {
+          const prefix = chapPrefixMatch[1];
+          const allFiles = fs.readdirSync(chapDir).filter(f => f.endsWith('.txt'));
+          for (const f of allFiles) {
+            if (f.startsWith(prefix) && f !== desiredFileName) {
+              try {
+                fs.unlinkSync(path.join(chapDir, f));
+                console.log(`[Storage] 🧹 自动清理残留历史碎片文件: ${f}`);
+              } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }
+
+      const filePath = path.join(chapDir, desiredFileName);
+      const normalizedContent = normalizeEllipsis(String(content || ''));
+      atomicWriteFileSync(filePath, normalizedContent, 'utf8');
+
+      // 更新 novel.json
+      if (nMeta && fs.existsSync(jsonPath)) {
+        try {
           let totalW = 0;
-          for (const vol of meta.volumes || []) {
+          for (const vol of nMeta.volumes || []) {
             let vW = 0;
             for (const chap of vol.chapters || []) {
               if (chap.id === chapterId) {
-                chap.title = title;
-                chap.fileName = fileName;
+                if (title) chap.title = title;
+                chap.fileName = desiredFileName;
                 chap.wordCount = String(content || '').replace(/\s/g, '').length;
               }
               vW += (chap.wordCount || 0);
@@ -627,8 +769,8 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
             }
             vol.wordCount = vW;
           }
-          meta.totalWordCount = totalW;
-          fs.writeFileSync(jsonPath, JSON.stringify(meta, null, 2), 'utf8');
+          nMeta.totalWordCount = totalW;
+          atomicWriteFileSync(jsonPath, JSON.stringify(nMeta, null, 2), 'utf8');
         } catch (e) {}
       }
 
@@ -640,7 +782,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
         createBookSnapshot(bookId, '每15分钟自动安全快照');
       }
 
-      res.json({ status: 'ok' });
+      res.json({ status: 'ok', filePath, fileName: desiredFileName });
     });
 
     // 7. 修改简介
@@ -652,7 +794,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
         if (fs.existsSync(jsonPath)) {
           const meta = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
           meta.synopsis = synopsis;
-          fs.writeFileSync(jsonPath, JSON.stringify(meta, null, 2), 'utf8');
+          atomicWriteFileSync(jsonPath, JSON.stringify(meta, null, 2), 'utf8');
         }
       }
       res.json({ status: 'ok' });
@@ -667,7 +809,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
         if (fs.existsSync(jsonPath)) {
           const meta = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
           meta.title = newTitle.startsWith('《') ? newTitle : `《${newTitle}》`;
-          fs.writeFileSync(jsonPath, JSON.stringify(meta, null, 2), 'utf8');
+          atomicWriteFileSync(jsonPath, JSON.stringify(meta, null, 2), 'utf8');
         }
       }
       res.json({ status: 'ok' });
@@ -687,7 +829,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
       if (nDir) {
         const charDir = path.join(nDir, 'characters');
         ensureDir(charDir);
-        fs.writeFileSync(path.join(charDir, 'cards.json'), JSON.stringify(req.body.list || [], null, 2), 'utf8');
+        atomicWriteFileSync(path.join(charDir, 'cards.json'), JSON.stringify(req.body.list || [], null, 2), 'utf8');
       }
       res.json({ status: 'ok' });
     });
@@ -706,7 +848,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
       if (nDir) {
         const charDir = path.join(nDir, 'characters');
         ensureDir(charDir);
-        fs.writeFileSync(path.join(charDir, 'categories.json'), JSON.stringify(req.body.list || [], null, 2), 'utf8');
+        atomicWriteFileSync(path.join(charDir, 'categories.json'), JSON.stringify(req.body.list || [], null, 2), 'utf8');
       }
       res.json({ status: 'ok' });
     });
@@ -725,7 +867,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
       if (nDir) {
         const charDir = path.join(nDir, 'characters');
         ensureDir(charDir);
-        fs.writeFileSync(path.join(charDir, 'logic_map.json'), JSON.stringify(req.body.data || {}, null, 2), 'utf8');
+        atomicWriteFileSync(path.join(charDir, 'logic_map.json'), JSON.stringify(req.body.data || {}, null, 2), 'utf8');
       }
       res.json({ status: 'ok' });
     });
@@ -752,9 +894,9 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
         const mindDir = path.join(nDir, 'mindmaps');
         ensureDir(mindDir);
         const key = `${scope}_${targetId}`;
-        fs.writeFileSync(path.join(mindDir, `${key}.json`), JSON.stringify(req.body.data || {}, null, 2), 'utf8');
+        atomicWriteFileSync(path.join(mindDir, `${key}.json`), JSON.stringify(req.body.data || {}, null, 2), 'utf8');
         if (scope === 'global') {
-          fs.writeFileSync(path.join(mindDir, 'global.json'), JSON.stringify(req.body.data || {}, null, 2), 'utf8');
+          atomicWriteFileSync(path.join(mindDir, 'global.json'), JSON.stringify(req.body.data || {}, null, 2), 'utf8');
         }
       }
       res.json({ status: 'ok' });
@@ -774,7 +916,7 @@ function startServer(openLoginCallback = null, preferredPort = 0) {
       if (nDir) {
         const fDir = path.join(nDir, 'foreshadows');
         ensureDir(fDir);
-        fs.writeFileSync(path.join(fDir, 'items.json'), JSON.stringify(req.body.list || [], null, 2), 'utf8');
+        atomicWriteFileSync(path.join(fDir, 'items.json'), JSON.stringify(req.body.list || [], null, 2), 'utf8');
       }
       res.json({ status: 'ok' });
     });
